@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NewsGeo Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #2563EB;
+        }
+        .status {
+            background-color: #f0fdf4;
+            border-radius: 4px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        button {
+            background-color: #2563EB;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #1d4ed8;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8fafc;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>NewsGeo Test Page</h1>
+        
+        <div class="status">
+            This is a simple test page to verify server functionality
+        </div>
+        
+        <button id="testButton">Test API Connection</button>
+        
+        <div id="result">
+            API response will appear here
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('testButton').addEventListener('click', function() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing connection...';
+            
+            fetch('/api/test')
+                .then(response => {
+                    if(response.ok) {
+                        return response.json();
+                    }
+                    throw new Error('Network response was not ok');
+                })
+                .then(data => {
+                    resultDiv.innerHTML = `
+                        <h3>Success!</h3>
+                        <p>Status: ${data.status}</p>
+                        <p>Message: ${data.message}</p>
+                    `;
+                })
+                .catch(error => {
+                    resultDiv.innerHTML = `
+                        <h3>Error</h3>
+                        <p>${error.message}</p>
+                    `;
+                });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NewsGeo App</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #2563EB;
+      margin-bottom: 30px;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .card {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      margin-bottom: 20px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+    input, button {
+      font-family: inherit;
+      font-size: 14px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      border: 1px solid #cbd5e1;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #2563EB;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+    button:hover {
+      background-color: #1d4ed8;
+    }
+    button:disabled {
+      background-color: #94a3b8;
+      cursor: not-allowed;
+    }
+    .news-item {
+      padding: 15px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .news-title {
+      font-weight: 600;
+      font-size: 16px;
+      margin-bottom: 5px;
+    }
+    .news-details {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #64748b;
+    }
+    .news-location {
+      background-color: #f1f5f9;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+    }
+    .server-status {
+      padding: 10px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+      background-color: #f0fdf4;
+      text-align: center;
+    }
+    #apiStatus {
+      font-weight: 500;
+    }
+    #error-message {
+      color: #ef4444;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <h1>NewsGeo Application</h1>
+  
+  <div class="server-status">
+    <div>API Server Status: <span id="apiStatus">Checking...</span></div>
+  </div>
+  
+  <div class="container">
+    <div class="card">
+      <h2>Login</h2>
+      <div class="form-group">
+        <label for="username">Username:</label>
+        <input type="text" id="username" placeholder="Enter your username">
+      </div>
+      
+      <div class="form-group">
+        <label for="password">Password:</label>
+        <input type="password" id="password" placeholder="Enter your password">
+      </div>
+      
+      <div class="form-group">
+        <button id="login-btn">Login</button>
+      </div>
+      
+      <div id="login-error" class="error-message"></div>
+    </div>
+    
+    <div class="card">
+      <h2>Latest News</h2>
+      <div id="news-container">
+        <div class="loading">Loading news...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Check API server status
+    fetch('/api/news')
+      .then(response => {
+        const apiStatus = document.getElementById('apiStatus');
+        if (response.ok) {
+          apiStatus.textContent = '✅ Online';
+          apiStatus.style.color = '#10b981';
+          
+          // If API is online, fetch news
+          return response.json();
+        } else {
+          apiStatus.textContent = '❌ Offline';
+          apiStatus.style.color = '#ef4444';
+          throw new Error('API server is not responding');
+        }
+      })
+      .then(data => {
+        // Display news items
+        const newsContainer = document.getElementById('news-container');
+        newsContainer.innerHTML = '';
+        
+        if (data && data.length > 0) {
+          data.slice(0, 5).forEach(news => {
+            const newsElement = document.createElement('div');
+            newsElement.className = 'news-item';
+            newsElement.innerHTML = `
+              <div class="news-title">${news.title || 'Breaking News'}</div>
+              <div class="news-details">
+                <span>${formatDate(news.createdAt || new Date())}</span>
+                <span class="news-location">${news.location || 'Unknown location'}</span>
+              </div>
+            `;
+            newsContainer.appendChild(newsElement);
+          });
+        } else {
+          newsContainer.innerHTML = '<div class="loading">No news found</div>';
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        const newsContainer = document.getElementById('news-container');
+        newsContainer.innerHTML = `<div class="loading">Could not load news<br><small>${error.message}</small></div>`;
+      });
+
+    // Login form handling
+    const loginBtn = document.getElementById('login-btn');
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const loginError = document.getElementById('login-error');
+    
+    loginBtn.addEventListener('click', () => {
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value.trim();
+      
+      if (!username || !password) {
+        loginError.textContent = 'Please enter both username and password';
+        return;
+      }
+      
+      loginError.textContent = '';
+      loginBtn.disabled = true;
+      
+      fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ username, password })
+      })
+      .then(response => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error('Login failed. Please check your credentials.');
+        }
+      })
+      .then(data => {
+        alert('Login successful! Welcome, ' + data.username);
+      })
+      .catch(error => {
+        loginError.textContent = error.message;
+      })
+      .finally(() => {
+        loginBtn.disabled = false;
+      });
+    });
+    
+    // Helper function to format date
+    function formatDate(dateString) {
+      const date = new Date(dateString);
+      return date.toLocaleDateString(undefined, { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric'
+      });
+    }
+  </script>
+</body>
+</html>

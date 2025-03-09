@@ -19,10 +19,6 @@ args = "NewsGeo Server"
 task = "workflow.run"
 args = "React Native Client"
 
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Web Client"
-
 [[workflows.workflow]]
 name = "NewsGeo Server"
 author = "agent"
@@ -52,21 +48,6 @@ task = "packager.installForAll"
 task = "shell.exec"
 args = "node rn-web-client.js"
 waitForPort = 5002
-
-[[workflows.workflow]]
-name = "Web Client"
-author = "agent"
-
-[workflows.workflow.metadata]
-agentRequireRestartOnSave = false
-
-[[workflows.workflow.tasks]]
-task = "packager.installForAll"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "node simplified-web-client.js"
-waitForPort = 5001
 
 [deployment]
 run = ["sh", "-c", "node start-server.js"]

@@ -6,7 +6,7 @@ const { createServer } = require('http');
 const { Server } = require('socket.io');
 const { WebSocketServer, WebSocket } = require('ws');
 const { setupAuth } = require('./auth');
-const { setupStorage } = require('./storage');
+const { setupStorage } = require('./database-storage');
 const newsRoutes = require('./routes/news');
 const userRoutes = require('./routes/user');
 const notificationsRoutes = require('./routes/notifications');
@@ -14,7 +14,7 @@ const streamingRoutes = require('./routes/streaming');
 
 // Initialize Express app
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = 5000;
 const httpServer = createServer(app);
 
 // Set up middleware
@@ -25,23 +25,11 @@ app.use(cors({
 app.use(bodyParser.json());
 app.use(express.static('.'));
 
-// Set up session storage
-const storage = setupStorage();
+// Set up WebSocket Server for raw WebSocket connections early
+const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
-// Set up session middleware
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'news-geo-secret-key',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  },
-  store: storage.sessionStore
-}));
-
-// Set up authentication
-setupAuth(app, storage);
+// Define a map to track active streams by ID
+const activeStreams = new Map();
 
 // Define utility functions first so they can be used in routes
 // Function to send real-time notifications via WebSocket
@@ -68,11 +56,50 @@ const sendNotificationToUser = (userId, notification) => {
   return sent;
 };
 
-// Set up API routes with access to utility functions
-app.use('/api/news', newsRoutes(storage));
-app.use('/api/profile', userRoutes(storage));
-app.use('/api/notifications', notificationsRoutes(storage, { sendNotificationToUser }));
-app.use('/api/streams', streamingRoutes(storage));
+// Set up session and database async, then start server
+(async () => {
+  try {
+    // Set up session storage
+    const storage = await setupStorage();
+    
+    // Set up session middleware
+    app.use(session({
+      secret: process.env.SESSION_SECRET || 'news-geo-secret-key',
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      },
+      store: storage.sessionStore
+    }));
+    
+    // Set up authentication
+    setupAuth(app, storage);
+    
+    // Set up API routes with access to utility functions
+    app.use('/api/news', newsRoutes(storage));
+    app.use('/api/profile', userRoutes(storage));
+    app.use('/api/notifications', notificationsRoutes(storage, { sendNotificationToUser }));
+    app.use('/api/streams', streamingRoutes(storage));
+    
+    console.log('Database storage initialized successfully');
+    
+    // Start the server immediately after database initialization
+    httpServer.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server is running on http://0.0.0.0:${PORT}`);
+      console.log(`WebSocket server is running on ws://0.0.0.0:${PORT}/ws`);
+      console.log(`Socket.IO server is running on http://0.0.0.0:${PORT}`);
+      console.log('========================================');
+      console.log('React Native client should be started separately using expo start');
+      console.log('========================================');
+    });
+    
+  } catch (error) {
+    console.error('Failed to initialize database storage:', error);
+    process.exit(1);
+  }
+})();
 
 // Serve static files
 app.use(express.static(process.cwd()));
@@ -126,12 +153,6 @@ const io = new Server(httpServer, {
   },
   transports: ['websocket', 'polling']
 });
-
-// Set up WebSocket Server for raw WebSocket connections
-const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
-
-// Define a map to track active streams by ID
-const activeStreams = new Map();
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
@@ -385,8 +406,6 @@ wss.on('connection', (ws, req) => {
   }));
 });
 
-// Note: sendNotificationToUser function is already defined above
-
 // Heartbeat interval to clean up dead connections
 setInterval(() => {
   const now = Date.now();
@@ -400,13 +419,3 @@ setInterval(() => {
     }
   });
 }, 60000); // Check every minute
-
-// Start the server
-httpServer.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server is running on http://0.0.0.0:${PORT}`);
-  console.log(`WebSocket server is running on ws://0.0.0.0:${PORT}/ws`);
-  console.log(`Socket.IO server is running on http://0.0.0.0:${PORT}`);
-  console.log('========================================');
-  console.log('React Native client should be started separately using expo start');
-  console.log('========================================');
-});

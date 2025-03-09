@@ -392,23 +392,12 @@ export default function HomeScreen() {
         </View>
         
         <View style={styles.headerActions}>
-          {user && (
-            <TouchableOpacity 
-              style={styles.iconButton}
-              onPress={() => navigation.navigate('Notifications')}
-            >
-              <Feather name="bell" size={22} color={theme.textSecondary} />
-            </TouchableOpacity>
-          )}
-          
-          {!user && (
-            <TouchableOpacity 
-              style={[styles.signInButton, { backgroundColor: theme.primary }]}
-              onPress={handleSignInPress}
-            >
-              <Text style={styles.signInButtonText}>Sign In</Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity 
+            style={styles.iconButton}
+            onPress={() => navigation.navigate('Search')}
+          >
+            <Feather name="search" size={22} color={theme.textSecondary} />
+          </TouchableOpacity>
           
           <ThemeToggle style={styles.themeToggle} />
         </View>

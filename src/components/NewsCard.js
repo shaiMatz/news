@@ -4,7 +4,8 @@ import {
   Text, 
   StyleSheet, 
   TouchableOpacity, 
-  ImageBackground 
+  ImageBackground,
+  Alert
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -20,18 +21,41 @@ import { formatRelativeTime } from '../utils/timeUtils';
  * @param {Object} props.news - The news item data
  * @param {boolean} props.compact - Whether to display in compact mode
  * @param {Function} props.onPress - Custom press handler (optional)
+ * @param {boolean} props.freemiumRestricted - Whether this news item is restricted by freemium
  */
-export default function NewsCard({ news, compact = false, onPress }) {
+export default function NewsCard({ 
+  news, 
+  compact = false, 
+  onPress,
+  freemiumRestricted = false  
+}) {
   const navigation = useNavigation();
   const { user } = useAuth();
   const { theme } = useTheme();
-  const isPremium = news.premium && !user;
+  
+  // Check if this content requires premium access
+  const isPremium = (news.premium || freemiumRestricted) && !user;
 
   const handlePress = () => {
+    if (isPremium) {
+      Alert.alert(
+        'Premium Content',
+        'Please sign in to access premium content and unlock all features.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Sign In', 
+            onPress: () => navigation.navigate('Auth')
+          }
+        ]
+      );
+      return;
+    }
+    
     if (onPress) {
       onPress(news);
     } else {
-      navigation.navigate('NewsDetail', { newsItem: news });
+      navigation.navigate('NewsDetail', { newsId: news.id, newsItem: news });
     }
   };
 
@@ -43,15 +67,19 @@ export default function NewsCard({ news, compact = false, onPress }) {
         { 
           backgroundColor: theme.cardBackground,
           shadowColor: theme.isDark ? '#000000' : theme.shadow
-        }
+        },
+        isPremium && styles.premiumContainer
       ]}
       onPress={handlePress}
-      disabled={isPremium}
+      activeOpacity={0.7}
     >
       <ImageBackground
-        source={{ uri: news.thumbnail }}
+        source={{ uri: news.thumbnail || 'https://via.placeholder.com/300x200?text=News' }}
         style={styles.thumbnail}
-        imageStyle={styles.thumbnailImage}
+        imageStyle={[
+          styles.thumbnailImage,
+          isPremium && styles.premiumThumbnail
+        ]}
       >
         <View style={styles.thumbnailOverlay}>
           <View style={styles.badgeContainer}>
@@ -68,12 +96,18 @@ export default function NewsCard({ news, compact = false, onPress }) {
           {isPremium && (
             <View style={styles.premiumOverlay}>
               <Feather name="lock" size={24} color="#FFFFFF" />
-              <Text style={styles.premiumText}>Premium</Text>
+              <Text style={styles.premiumText}>
+                {freemiumRestricted ? 'Sign In to View' : 'Premium'}
+              </Text>
             </View>
           )}
 
           <View style={styles.playIcon}>
-            <Feather name="play" size={compact ? 20 : 24} color="#FFFFFF" />
+            <Feather 
+              name={news.isLive ? "video" : "play"} 
+              size={compact ? 20 : 24} 
+              color="#FFFFFF" 
+            />
           </View>
         </View>
       </ImageBackground>
@@ -83,7 +117,8 @@ export default function NewsCard({ news, compact = false, onPress }) {
           style={[
             styles.title, 
             compact && styles.compactTitle,
-            { color: theme.text }
+            { color: theme.text },
+            isPremium && styles.premiumText
           ]}
           numberOfLines={compact ? 2 : 3}
         >
@@ -92,7 +127,7 @@ export default function NewsCard({ news, compact = false, onPress }) {
         
         <View style={styles.metaContainer}>
           <Text style={[styles.timestamp, { color: theme.textSecondary }]}>
-            {formatRelativeTime(news.publishedAt)}
+            {formatRelativeTime(news.publishedAt || news.createdAt || new Date())}
           </Text>
           
           <View style={styles.statsContainer}>
@@ -106,13 +141,41 @@ export default function NewsCard({ news, compact = false, onPress }) {
             )}
             
             <View style={styles.statItem}>
-              <Feather name="heart" size={12} color={theme.textSecondary} />
-              <Text style={[styles.statText, { color: theme.textSecondary }]}>
+              <Feather 
+                name={news.liked ? "heart" : "heart"} 
+                size={12} 
+                color={news.liked ? theme.primary : theme.textSecondary} 
+              />
+              <Text 
+                style={[
+                  styles.statText, 
+                  { color: news.liked ? theme.primary : theme.textSecondary }
+                ]}
+              >
                 {news.likes || 0}
               </Text>
             </View>
+            
+            {!compact && news.commentsCount > 0 && (
+              <View style={styles.statItem}>
+                <Feather name="message-circle" size={12} color={theme.textSecondary} />
+                <Text style={[styles.statText, { color: theme.textSecondary }]}>
+                  {news.commentsCount}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
+        
+        {isPremium && (
+          <TouchableOpacity
+            style={[styles.unlockButton, { backgroundColor: theme.primary }]}
+            onPress={() => navigation.navigate('Auth')}
+          >
+            <Feather name="unlock" size={12} color="#FFFFFF" />
+            <Text style={styles.unlockButtonText}>Sign In to Unlock</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -133,12 +196,19 @@ const styles = StyleSheet.create({
   compactContainer: {
     marginBottom: 8,
   },
+  premiumContainer: {
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
+  },
   thumbnail: {
     height: 180,
   },
   thumbnailImage: {
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
+  },
+  premiumThumbnail: {
+    opacity: 0.7,
   },
   thumbnailOverlay: {
     flex: 1,
@@ -172,7 +242,7 @@ const styles = StyleSheet.create({
   },
   premiumOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(45, 55, 72, 0.7)',
+    backgroundColor: 'rgba(45, 55, 72, 0.75)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -181,6 +251,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginTop: 8,
+    textAlign: 'center',
   },
   playIcon: {
     alignSelf: 'center',
@@ -224,5 +295,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#94A3B8',
     marginLeft: 4,
+  },
+  unlockButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#3B82F6',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginTop: 12,
+  },
+  unlockButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginLeft: 6,
   },
 });

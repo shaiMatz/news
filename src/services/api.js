@@ -16,6 +16,29 @@ const API_HOST = isReplit
 export const API_URL = API_HOST;
 const API_BASE_URL = `${API_HOST}/api`;
 
+// Create a caching and request queue system
+let requestQueue = [];
+let isProcessingQueue = false;
+
+// Process the request queue sequentially
+async function processQueue() {
+  if (isProcessingQueue || requestQueue.length === 0) return;
+  
+  isProcessingQueue = true;
+  
+  const { resolve, reject, url, options } = requestQueue.shift();
+  
+  try {
+    const response = await fetch(url, options);
+    resolve(response);
+  } catch (error) {
+    reject(error);
+  } finally {
+    isProcessingQueue = false;
+    processQueue(); // Process next item in queue
+  }
+}
+
 /**
  * Helper function for making API requests
  * 
@@ -23,9 +46,10 @@ const API_BASE_URL = `${API_HOST}/api`;
  * @param {string} method - HTTP method
  * @param {Object} data - Request body
  * @param {Object} headers - Additional headers
+ * @param {Object} options - Additional fetch options
  * @returns {Promise<any>} Response data
  */
-async function apiRequest(endpoint, method = 'GET', data = null, customHeaders = {}) {
+async function apiRequest(endpoint, method = 'GET', data = null, customHeaders = {}, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
   
   const headers = {
@@ -33,28 +57,51 @@ async function apiRequest(endpoint, method = 'GET', data = null, customHeaders =
     ...customHeaders,
   };
   
-  const options = {
+  const fetchOptions = {
     method,
     headers,
     credentials: 'include', // Include cookies for session authentication
+    ...options
   };
   
   if (data) {
-    options.body = JSON.stringify(data);
+    fetchOptions.body = JSON.stringify(data);
   }
   
   try {
-    const response = await fetch(url, options);
+    // For authentication endpoints, use the request queue to prevent race conditions
+    let response;
+    if (endpoint.startsWith('/login') || endpoint.startsWith('/register') || endpoint.startsWith('/logout')) {
+      response = await new Promise((resolve, reject) => {
+        requestQueue.push({ resolve, reject, url, options: fetchOptions });
+        processQueue();
+      });
+    } else {
+      response = await fetch(url, fetchOptions);
+    }
     
-    // Check if response is unauthorized
+    // Handle different status codes
     if (response.status === 401) {
       throw new Error('Unauthorized. Please login.');
     }
     
-    // Check if the response is not ok
+    if (response.status === 403) {
+      throw new Error('Forbidden. You do not have permission to access this resource.');
+    }
+    
+    if (response.status === 429) {
+      throw new Error('Too many requests. Please try again later.');
+    }
+    
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Request failed with status ${response.status}`);
+      let errorMessage;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || `Request failed with status ${response.status}`;
+      } catch (e) {
+        errorMessage = `Request failed with status ${response.status}`;
+      }
+      throw new Error(errorMessage);
     }
     
     // Parse JSON response if it exists
@@ -68,6 +115,36 @@ async function apiRequest(endpoint, method = 'GET', data = null, customHeaders =
     console.error(`API error for ${endpoint}:`, error);
     throw error;
   }
+}
+
+/**
+ * Custom fetch function that can handle retries and special error handling
+ */
+export async function queryFn({ method = 'GET', on401 = 'throw', retries = 1 }) {
+  return async (endpoint, data) => {
+    let attempts = 0;
+    
+    while (attempts <= retries) {
+      try {
+        return await apiRequest(endpoint, method, data);
+      } catch (error) {
+        attempts++;
+        
+        // Handle unauthorized errors specially if requested
+        if (error.message.includes('Unauthorized') && on401 === 'returnNull') {
+          return null;
+        }
+        
+        // Throw if we're out of retry attempts or error isn't network-related
+        if (attempts > retries || (!error.message.includes('Network') && !error.message.includes('timeout'))) {
+          throw error;
+        }
+        
+        // Wait with exponential backoff before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempts - 1)));
+      }
+    }
+  };
 }
 
 // Auth API
@@ -88,11 +165,20 @@ export async function getUser() {
 }
 
 // News API
-export async function fetchNews(locationParams) {
-  const queryParams = locationParams 
-    ? `?lat=${locationParams.latitude}&lon=${locationParams.longitude}` 
-    : '';
-  return apiRequest(`/news${queryParams}`);
+export async function fetchNews(locationParams, limit) {
+  let queryParams = [];
+  
+  if (locationParams) {
+    queryParams.push(`lat=${locationParams.latitude}`);
+    queryParams.push(`lon=${locationParams.longitude}`);
+  }
+  
+  if (limit) {
+    queryParams.push(`limit=${limit}`);
+  }
+  
+  const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
+  return apiRequest(`/news${queryString}`);
 }
 
 export async function fetchNewsById(newsId) {
@@ -134,7 +220,15 @@ export async function fetchUserContent() {
 
 // Notifications API
 export async function fetchNotifications() {
-  return apiRequest('/notifications');
+  try {
+    return await apiRequest('/notifications');
+  } catch (error) {
+    // Return empty array instead of throwing if the user is not authenticated
+    if (error.message.includes('Unauthorized')) {
+      return [];
+    }
+    throw error;
+  }
 }
 
 export async function markNotificationAsRead(notificationId) {
@@ -168,20 +262,36 @@ export async function endStream(streamId) {
 // WebSocket helpers
 export function getWebSocketUrl(params = {}) {
   const { newsId, userId, type } = params;
-  const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsHost = API_URL ? API_URL.replace(/^https?:\/\//, '') : 'localhost:5000';
+  
+  // For Replit environment, use the current URL with /ws path and change protocol
+  const isReplit = typeof window !== 'undefined' && 
+    window.location && 
+    window.location.hostname && 
+    window.location.hostname.includes('.replit.dev');
+  
+  let url;
+  if (isReplit) {
+    // Use the current origin but replace the protocol
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    url = `${protocol}//${window.location.host}/ws`;
+  } else {
+    // For local development
+    const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = API_URL ? API_URL.replace(/^https?:\/\//, '') : 'localhost:5000';
+    url = `${protocol}//${wsHost}/ws`;
+  }
   
   // Create URL with query parameters
-  let url = `${protocol}//${wsHost}/ws`;
   const queryParams = [];
   
   if (newsId) queryParams.push(`newsId=${newsId}`);
-  if (userId) queryParams.push(`userId=${userId}`);
+  if (userId) queryParams.push(`userId=${userId || 'anonymous-' + Date.now()}`);
   if (type) queryParams.push(`type=${type}`);
   
   if (queryParams.length > 0) {
     url += `?${queryParams.join('&')}`;
   }
   
+  console.log('Connecting to WebSocket at:', url);
   return url;
 }

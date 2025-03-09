@@ -183,6 +183,106 @@
     #mark-all-read:hover:not(:disabled) {
       background-color: #e2e8f0;
     }
+    
+    /* Freemium styles */
+    .freemium-info {
+      margin-bottom: 16px;
+      padding: 12px;
+      border-radius: 8px;
+      background-color: #f0f9ff;
+      border: 1px solid #e0f2fe;
+    }
+    .freemium-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      background-color: #0ea5e9;
+      color: white;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      margin-bottom: 6px;
+    }
+    .premium-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      background-color: #8b5cf6;
+      color: white;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .premium-content {
+      position: relative;
+      opacity: 0.8;
+      cursor: not-allowed;
+    }
+    .premium-content:hover {
+      background-color: #f8fafc;
+    }
+    .lock-icon {
+      margin-left: 6px;
+      font-size: 14px;
+      color: #94a3b8;
+    }
+    .news-description {
+      margin: 6px 0 10px;
+      font-size: 14px;
+      color: #64748b;
+      line-height: 1.4;
+    }
+    .news-stats {
+      display: flex;
+      gap: 10px;
+      font-size: 12px;
+    }
+    .load-more-btn {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      margin-top: 16px;
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+    .load-more-btn:hover {
+      background-color: #1d4ed8;
+    }
+    
+    /* Tab styles */
+    .tab-container {
+      display: flex;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 20px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      background-color: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: #64748b;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      color: #2563eb;
+      border-bottom-color: #2563eb;
+    }
+    .tab-btn:hover:not(.active) {
+      background-color: #f8fafc;
+      color: #334155;
+    }
+    .error-message {
+      color: #ef4444;
+      font-size: 14px;
+      margin-top: 10px;
+      min-height: 20px;
+    }
     /* Dark mode support */
     @media (prefers-color-scheme: dark) {
       body {
@@ -234,22 +334,58 @@
   
   <div class="container">
     <div class="card">
-      <h2>Login</h2>
-      <div class="form-group">
-        <label for="username">Username:</label>
-        <input type="text" id="username" placeholder="Enter your username">
+      <div class="tab-container">
+        <button class="tab-btn active" data-tab="login">Login</button>
+        <button class="tab-btn" data-tab="register">Register</button>
       </div>
       
-      <div class="form-group">
-        <label for="password">Password:</label>
-        <input type="password" id="password" placeholder="Enter your password">
+      <div class="tab-content" id="login-tab">
+        <h2>Login</h2>
+        <div class="form-group">
+          <label for="username">Username:</label>
+          <input type="text" id="username" placeholder="Enter your username">
+        </div>
+        
+        <div class="form-group">
+          <label for="password">Password:</label>
+          <input type="password" id="password" placeholder="Enter your password">
+        </div>
+        
+        <div class="form-group">
+          <button id="login-btn">Login</button>
+        </div>
+        
+        <div id="login-error" class="error-message"></div>
       </div>
       
-      <div class="form-group">
-        <button id="login-btn">Login</button>
+      <div class="tab-content" id="register-tab" style="display: none;">
+        <h2>Register</h2>
+        <div class="form-group">
+          <label for="reg-username">Username:</label>
+          <input type="text" id="reg-username" placeholder="Choose a username">
+        </div>
+        
+        <div class="form-group">
+          <label for="reg-email">Email:</label>
+          <input type="email" id="reg-email" placeholder="Enter your email">
+        </div>
+        
+        <div class="form-group">
+          <label for="reg-password">Password:</label>
+          <input type="password" id="reg-password" placeholder="Choose a password">
+        </div>
+        
+        <div class="form-group">
+          <label for="reg-confirm">Confirm Password:</label>
+          <input type="password" id="reg-confirm" placeholder="Confirm your password">
+        </div>
+        
+        <div class="form-group">
+          <button id="register-btn">Register</button>
+        </div>
+        
+        <div id="register-error" class="error-message"></div>
       </div>
-      
-      <div id="login-error" class="error-message"></div>
     </div>
     
     <div class="card">
@@ -327,19 +463,81 @@
         const newsContainer = document.getElementById('news-container');
         newsContainer.innerHTML = '';
         
-        if (data && data.length > 0) {
-          data.slice(0, 5).forEach(news => {
+        // Check for freemium format (with news array and meta object)
+        const newsItems = data.news || data;
+        const meta = data.meta || { freemium: false, freeLimit: 10 };
+        
+        // Add freemium status info
+        const freemiumInfo = document.createElement('div');
+        freemiumInfo.className = 'freemium-info';
+        freemiumInfo.innerHTML = meta.freemium 
+          ? `<div class="freemium-badge">Free Account</div>
+             <p>You are viewing ${meta.freeLimit} free news items. <a href="#" id="login-prompt">Sign in</a> to see more.</p>`
+          : '<div class="premium-badge">Full Access</div>';
+        newsContainer.appendChild(freemiumInfo);
+            
+        // Listen for login prompt clicks
+        setTimeout(() => {
+          const loginPrompt = document.getElementById('login-prompt');
+          if (loginPrompt) {
+            loginPrompt.addEventListener('click', (e) => {
+              e.preventDefault();
+              document.getElementById('username').focus();
+              window.scrollTo({
+                top: document.querySelector('.card').offsetTop - 20,
+                behavior: 'smooth'
+              });
+            });
+          }
+        }, 100);
+        
+        if (newsItems && newsItems.length > 0) {
+          newsItems.forEach(news => {
             const newsElement = document.createElement('div');
-            newsElement.className = 'news-item';
+            const isPremium = news.premium || news.freemiumRestricted;
+            
+            newsElement.className = isPremium 
+              ? 'news-item premium-content' 
+              : 'news-item';
+              
             newsElement.innerHTML = `
-              <div class="news-title">${news.title || 'Breaking News'}</div>
+              <div class="news-title">
+                ${news.title || 'Breaking News'}
+                ${isPremium ? '<span class="lock-icon">🔒</span>' : ''}
+              </div>
+              <div class="news-description">
+                ${news.shortDescription || news.description?.substring(0, 100) + '...' || ''}
+              </div>
               <div class="news-details">
-                <span>${formatDate(news.createdAt || new Date())}</span>
+                <span>${formatDate(news.publishedAt || news.createdAt || new Date())}</span>
                 <span class="news-location">${news.location || 'Unknown location'}</span>
+                <div class="news-stats">
+                  <span title="Views">👁️ ${news.views || 0}</span>
+                  <span title="Likes">❤️ ${news.likes || 0}</span>
+                </div>
               </div>
             `;
             newsContainer.appendChild(newsElement);
+            
+            // Add click handler for premium content
+            if (isPremium) {
+              newsElement.addEventListener('click', () => {
+                alert('Please sign in to view premium content');
+                document.getElementById('username').focus();
+              });
+            }
           });
+          
+          // Add a "Load More" button if there might be more content
+          if (meta.hasMoreContent || newsItems.length === meta.freeLimit) {
+            const loadMoreButton = document.createElement('button');
+            loadMoreButton.className = 'load-more-btn';
+            loadMoreButton.textContent = 'Sign In to View More';
+            loadMoreButton.addEventListener('click', () => {
+              document.getElementById('username').focus();
+            });
+            newsContainer.appendChild(loadMoreButton);
+          }
         } else {
           newsContainer.innerHTML = '<div class="loading">No news found</div>';
         }
@@ -350,6 +548,29 @@
         newsContainer.innerHTML = `<div class="loading">Could not load news<br><small>${error.message}</small></div>`;
       });
 
+    // Tab switching functionality
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tabName = btn.dataset.tab;
+        
+        // Update active button
+        tabBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        // Show the selected tab content
+        tabContents.forEach(content => {
+          if (content.id === tabName + '-tab') {
+            content.style.display = 'block';
+          } else {
+            content.style.display = 'none';
+          }
+        });
+      });
+    });
+    
     // Login form handling
     const loginBtn = document.getElementById('login-btn');
     const usernameInput = document.getElementById('username');
@@ -384,13 +605,82 @@
         }
       })
       .then(data => {
-        alert('Login successful! Welcome, ' + data.username);
+        localStorage.setItem('userId', data.id);
+        localStorage.setItem('username', data.username);
+        
+        // Reload the page to update all content with authenticated state
+        window.location.reload();
       })
       .catch(error => {
         loginError.textContent = error.message;
       })
       .finally(() => {
         loginBtn.disabled = false;
+      });
+    });
+    
+    // Registration form handling
+    const registerBtn = document.getElementById('register-btn');
+    const regUsernameInput = document.getElementById('reg-username');
+    const regEmailInput = document.getElementById('reg-email');
+    const regPasswordInput = document.getElementById('reg-password');
+    const regConfirmInput = document.getElementById('reg-confirm');
+    const registerError = document.getElementById('register-error');
+    
+    registerBtn.addEventListener('click', () => {
+      const username = regUsernameInput.value.trim();
+      const email = regEmailInput.value.trim();
+      const password = regPasswordInput.value.trim();
+      const confirmPassword = regConfirmInput.value.trim();
+      
+      // Simple validation
+      if (!username || !email || !password) {
+        registerError.textContent = 'Please fill in all required fields';
+        return;
+      }
+      
+      if (password !== confirmPassword) {
+        registerError.textContent = 'Passwords do not match';
+        return;
+      }
+      
+      if (password.length < 6) {
+        registerError.textContent = 'Password must be at least 6 characters';
+        return;
+      }
+      
+      registerError.textContent = '';
+      registerBtn.disabled = true;
+      
+      fetch('/api/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ username, email, password })
+      })
+      .then(response => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error('Registration failed. Try a different username.');
+        }
+      })
+      .then(data => {
+        localStorage.setItem('userId', data.id);
+        localStorage.setItem('username', data.username);
+        
+        alert('Registration successful! You are now logged in.');
+        
+        // Reload the page to update all content with authenticated state
+        window.location.reload();
+      })
+      .catch(error => {
+        registerError.textContent = error.message;
+      })
+      .finally(() => {
+        registerBtn.disabled = false;
       });
     });
     

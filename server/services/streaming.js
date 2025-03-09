@@ -1,10 +1,12 @@
 /**
  * Streaming service utilities
  * Handles real-time streaming functionality including stream management,
- * authentication, and broadcaster/viewer coordination
+ * authentication, broadcaster/viewer coordination, and trending content
  */
 
 const streams = new Map();
+const trendingNews = new Map(); // Map to store trending news items
+const liveActivityByRegion = new Map(); // Map to store live activity by region
 
 /**
  * Creates a new live stream
@@ -195,6 +197,192 @@ function getPublicStreamData(stream) {
   };
 }
 
+/**
+ * Track a news item's activity for trending calculations
+ * 
+ * @param {string} newsId - ID of the news item
+ * @param {string} activityType - Type of activity ('view', 'like', 'comment', 'share')
+ * @param {Object} options - Additional options
+ * @param {Object} options.location - Location data for regional tracking
+ * @param {string} options.userId - ID of the user performing the action
+ * @returns {Object} Updated trending data for this news item
+ */
+function trackNewsActivity(newsId, activityType, options = {}) {
+  if (!newsId) return null;
+  
+  const id = newsId.toString();
+  const now = Date.now();
+  const timeWindows = [
+    { name: 'last15m', duration: 15 * 60 * 1000 },
+    { name: 'lastHour', duration: 60 * 60 * 1000 },
+    { name: 'last24h', duration: 24 * 60 * 60 * 1000 }
+  ];
+  
+  // Initialize or get existing trend data
+  const trendData = trendingNews.get(id) || {
+    newsId: id,
+    activities: [],
+    scores: {
+      total: 0,
+      last15m: 0,
+      lastHour: 0,
+      last24h: 0
+    },
+    activityCounts: {
+      view: 0,
+      like: 0,
+      comment: 0,
+      share: 0
+    },
+    regions: new Map()
+  };
+  
+  // Add this activity
+  const activity = {
+    type: activityType,
+    timestamp: now,
+    userId: options.userId,
+    location: options.location
+  };
+  
+  trendData.activities.push(activity);
+  trendData.activityCounts[activityType] = (trendData.activityCounts[activityType] || 0) + 1;
+  
+  // Update regional tracking if location is provided
+  if (options.location) {
+    const { latitude, longitude, regionName } = options.location;
+    if (regionName) {
+      const regionCount = trendData.regions.get(regionName) || 0;
+      trendData.regions.set(regionName, regionCount + 1);
+      
+      // Update global region tracking
+      const regionActivity = liveActivityByRegion.get(regionName) || {
+        count: 0,
+        newsItems: new Set(),
+        lastActivity: null
+      };
+      
+      regionActivity.count++;
+      regionActivity.newsItems.add(id);
+      regionActivity.lastActivity = now;
+      liveActivityByRegion.set(regionName, regionActivity);
+    }
+  }
+  
+  // Calculate time-based scores
+  let totalScore = 0;
+  
+  // Apply activity type weights
+  const weights = {
+    view: 1,
+    like: 5,
+    comment: 10,
+    share: 15
+  };
+  
+  const activityScore = weights[activityType] || 1;
+  
+  // Update scores for each time window
+  timeWindows.forEach(window => {
+    const cutoff = now - window.duration;
+    const recentActivities = trendData.activities.filter(a => a.timestamp >= cutoff);
+    const windowScore = recentActivities.reduce((score, act) => 
+      score + (weights[act.type] || 1), 0);
+    
+    trendData.scores[window.name] = windowScore;
+    
+    // Recent activities contribute more to total score
+    if (window.name === 'last15m') {
+      totalScore += windowScore * 3;
+    } else if (window.name === 'lastHour') {
+      totalScore += windowScore * 2;
+    } else {
+      totalScore += windowScore;
+    }
+  });
+  
+  trendData.scores.total = totalScore;
+  trendingNews.set(id, trendData);
+  
+  // Clean up old activities (only keep last 24 hours)
+  const dayAgo = now - (24 * 60 * 60 * 1000);
+  trendData.activities = trendData.activities.filter(a => a.timestamp >= dayAgo);
+  
+  return {
+    newsId: id,
+    scores: trendData.scores,
+    activityCounts: trendData.activityCounts,
+    regionActivity: Array.from(trendData.regions.entries()).map(([name, count]) => ({ name, count }))
+  };
+}
+
+/**
+ * Get trending news items
+ * 
+ * @param {Object} options - Options for filtering trending news
+ * @param {string} options.timeframe - Timeframe to use for scoring ('last15m', 'lastHour', 'last24h', 'total')
+ * @param {string} options.region - Filter by region name
+ * @param {number} options.limit - Maximum number of items to return
+ * @returns {Array} Array of trending news items with scores
+ */
+function getTrendingNews(options = {}) {
+  const { timeframe = 'total', region, limit = 10 } = options;
+  const validTimeframes = ['last15m', 'lastHour', 'last24h', 'total'];
+  const scoreKey = validTimeframes.includes(timeframe) ? timeframe : 'total';
+  
+  // Convert Map to Array for sorting
+  let trending = Array.from(trendingNews.values());
+  
+  // Filter by region if specified
+  if (region) {
+    trending = trending.filter(item => 
+      item.regions && item.regions.has(region)
+    );
+  }
+  
+  // Sort by selected timeframe score
+  trending.sort((a, b) => b.scores[scoreKey] - a.scores[scoreKey]);
+  
+  // Take only the requested number of items
+  trending = trending.slice(0, limit);
+  
+  // Format the output
+  return trending.map(item => ({
+    newsId: item.newsId,
+    score: item.scores[scoreKey],
+    activityCounts: item.activityCounts,
+    regionActivity: Array.from(item.regions || []).map(([name, count]) => ({ name, count }))
+  }));
+}
+
+/**
+ * Get regions with active news
+ * 
+ * @param {Object} options - Options for filtering regions
+ * @param {number} options.limit - Maximum number of regions to return
+ * @param {number} options.activeWithinMinutes - Only include regions with activity within this many minutes
+ * @returns {Array} Array of active regions with news counts
+ */
+function getActiveRegions(options = {}) {
+  const { limit = 10, activeWithinMinutes = 60 } = options;
+  const now = Date.now();
+  const cutoff = now - (activeWithinMinutes * 60 * 1000);
+  
+  // Filter regions with recent activity
+  const activeRegions = Array.from(liveActivityByRegion.entries())
+    .filter(([_, data]) => data.lastActivity >= cutoff)
+    .map(([name, data]) => ({
+      name,
+      activityCount: data.count,
+      newsItemsCount: data.newsItems.size,
+      lastActivity: data.lastActivity
+    }))
+    .sort((a, b) => b.activityCount - a.activityCount)
+    .slice(0, limit);
+  
+  return activeRegions;
+}
+
 module.exports = {
   createStream,
   endStream,
@@ -203,5 +391,8 @@ module.exports = {
   addComment,
   addReaction,
   getActiveStreams,
-  getStream
+  getStream,
+  trackNewsActivity,
+  getTrendingNews,
+  getActiveRegions
 };

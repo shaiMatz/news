@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Platfo
 import { Feather } from '@expo/vector-icons';
 import io from 'socket.io-client';
 import { useAuth } from '../contexts/AuthContext';
-import { API_URL } from '../services/api';
+import { API_URL, getWebSocketUrl } from '../services/api';
 import VideoPlayer from './VideoPlayer';
 import LoadingIndicator from './LoadingIndicator';
 import LocationBadge from './LocationBadge';
@@ -104,37 +104,83 @@ export default function LiveNewsStream({ newsItem, onClose }) {
     // Skip for non-video content
     if (!newsItem.isVideoContent) return;
     
-    // Determine WebSocket URL
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsHost = API_URL ? API_URL.replace(/^https?:\/\//, '') : 'localhost:5000';
-    const wsUrl = `${protocol}//${wsHost}/ws?newsId=${newsItem.id}`;
+    // Get WebSocket URL using our helper function
+    const wsUrl = getWebSocketUrl({ newsId: newsItem.id, type: 'stream' });
     
     // Connect to WebSocket
     wsRef.current = new WebSocket(wsUrl);
     const ws = wsRef.current;
     
     ws.onopen = () => {
-      console.log('WebSocket connected');
+      console.log('Video stream WebSocket connected');
+      setConnected(true);
+      
+      // Send authentication if user is logged in
+      if (user) {
+        ws.send(JSON.stringify({ 
+          type: 'auth', 
+          userId: user.id,
+          clientType: 'stream'
+        }));
+      }
+      
+      // Set up ping interval to keep connection alive
+      const pingInterval = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'ping', time: Date.now() }));
+        }
+      }, 30000);
+      
+      // Store the interval for cleanup
+      wsRef.pingInterval = pingInterval;
     };
     
     ws.onerror = (error) => {
       console.error('WebSocket error:', error);
+      setConnected(false);
     };
     
     ws.onclose = () => {
       console.log('WebSocket disconnected');
+      setConnected(false);
+      
+      // Clear ping interval
+      if (wsRef.pingInterval) {
+        clearInterval(wsRef.pingInterval);
+      }
     };
     
-    // WebSocket message handling would be implemented here
-    // This is typically handled by the VideoPlayer component
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('WebSocket message received:', data);
+        
+        // Handle different message types
+        if (data.type === 'stream-data') {
+          // Handle stream data - this would typically be passed to the video player
+        } else if (data.type === 'stream-meta') {
+          setStreamMetadata(data.metadata || {});
+        }
+      } catch (e) {
+        // Handle binary data (for video streaming)
+        // This would be passed to a video player that can handle raw data
+      }
+    };
     
     // Clean up on unmount
     return () => {
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.close();
+      if (ws) {
+        if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+          ws.close();
+        }
+        
+        // Clear ping interval
+        if (wsRef.pingInterval) {
+          clearInterval(wsRef.pingInterval);
+        }
       }
     };
-  }, [newsItem.id, newsItem.isVideoContent]);
+  }, [newsItem.id, newsItem.isVideoContent, user]);
   
   const handleSendComment = () => {
     if (!commentText.trim() || !connected || !socketRef.current) return;

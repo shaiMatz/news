@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,13 +11,22 @@ import ProfileScreen from '../screens/ProfileScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import LoadingIndicator from '../components/LoadingIndicator';
 import NotificationBadge from '../components/NotificationBadge';
+import ProtectedRoute from '../components/ProtectedRoute';
 import { View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { getUnreadNotificationCount, addRealtimeNotificationListener, configureNotifications } from '../services/notifications';
+import { 
+  getUnreadNotificationCount, 
+  addRealtimeNotificationListener, 
+  configureNotifications 
+} from '../services/notifications';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
+/**
+ * Tab navigator for main app screens
+ * These screens are only accessible when authenticated
+ */
 function MainTabNavigator() {
   const { user } = useAuth();
   const { theme } = useTheme();
@@ -28,31 +37,43 @@ function MainTabNavigator() {
     configureNotifications();
   }, []);
   
+  // Fetch notification count
+  const fetchUnreadCount = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      const count = await getUnreadNotificationCount();
+      setNotificationCount(count);
+    } catch (error) {
+      console.error('Error fetching notification count:', error);
+    }
+  }, [user]);
+  
   // Effect to set up real-time notifications and fetch unread count
   useEffect(() => {
-    // Initial fetch of notification count
-    const fetchUnreadCount = async () => {
-      try {
-        const count = await getUnreadNotificationCount();
-        setNotificationCount(count);
-      } catch (error) {
-        console.error('Error fetching notification count:', error);
-      }
-    };
+    // Skip if no user is logged in
+    if (!user) return;
     
+    // Initial fetch
     fetchUnreadCount();
     
     // Set up real-time notification listener
     const removeListener = addRealtimeNotificationListener((notification) => {
       // Update count when new notification is received
-      setNotificationCount(prevCount => prevCount + 1);
+      if (!notification.read) {
+        setNotificationCount(prevCount => prevCount + 1);
+      }
     }, user);
     
-    // Clean up listener on unmount
+    // Set up interval to refresh count
+    const intervalId = setInterval(fetchUnreadCount, 60000); // Refresh every minute
+    
+    // Clean up on unmount
     return () => {
       if (removeListener) removeListener();
+      clearInterval(intervalId);
     };
-  }, [user]);
+  }, [user, fetchUnreadCount]);
   
   return (
     <Tab.Navigator
@@ -91,7 +112,9 @@ function MainTabNavigator() {
           tabBarIcon: ({ color }) => (
             <View>
               <Feather name="bell" size={24} color={color} />
-              <NotificationBadge count={notificationCount} />
+              {notificationCount > 0 && (
+                <NotificationBadge count={notificationCount} autoUpdate={false} />
+              )}
             </View>
           ),
         }}
@@ -107,38 +130,64 @@ function MainTabNavigator() {
   );
 }
 
+/**
+ * Protected component wrapper for authenticated screens
+ */
+function ProtectedMainNavigator() {
+  return (
+    <ProtectedRoute>
+      <MainTabNavigator />
+    </ProtectedRoute>
+  );
+}
+
+/**
+ * Protected component wrapper for news detail screen
+ */
+function ProtectedNewsDetail(props) {
+  return (
+    <ProtectedRoute>
+      <NewsDetailScreen {...props} />
+    </ProtectedRoute>
+  );
+}
+
+/**
+ * Main app navigator that handles authentication flow
+ */
 export default function AppNavigator() {
-  const { user, isLoading } = useAuth();
+  const { user, loading } = useAuth();
   const { theme } = useTheme();
 
-  if (isLoading) {
+  if (loading) {
     return <LoadingIndicator />;
   }
 
   return (
     <Stack.Navigator>
-      {user ? (
-        <>
-          <Stack.Screen 
-            name="Main" 
-            component={MainTabNavigator} 
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen 
-            name="NewsDetail" 
-            component={NewsDetailScreen} 
-            options={{
-              title: '',
-              headerBackTitleVisible: false,
-              headerStyle: {
-                backgroundColor: theme.background,
-                shadowColor: 'transparent',
-              },
-              headerTintColor: theme.primary,
-            }}
-          />
-        </>
-      ) : (
+      <Stack.Screen 
+        name="Main" 
+        component={user ? MainTabNavigator : AuthScreen}
+        options={{ headerShown: false }}
+      />
+      
+      {user && (
+        <Stack.Screen 
+          name="NewsDetail" 
+          component={NewsDetailScreen} 
+          options={{
+            title: '',
+            headerBackTitleVisible: false,
+            headerStyle: {
+              backgroundColor: theme.background,
+              shadowColor: 'transparent',
+            },
+            headerTintColor: theme.primary,
+          }}
+        />
+      )}
+      
+      {!user && (
         <Stack.Screen 
           name="Auth" 
           component={AuthScreen} 

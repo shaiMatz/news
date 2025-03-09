@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { FlatList, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import NewsCard from './NewsCard';
 import { Feather } from '@expo/vector-icons';
@@ -14,16 +14,50 @@ import { useNavigation } from '@react-navigation/native';
  * @param {Function} props.onNewsPress - Function to handle news item press
  * @param {boolean} props.isAuthenticated - Whether the user is authenticated
  * @param {Object} props.refreshControl - RefreshControl component
+ * @param {Object} props.freemiumMeta - Metadata about freemium restrictions
+ * @param {number} props.freemiumMeta.freeLimit - Number of free items for non-authenticated users
  */
 export default function NewsStream({ 
   news = [], 
   onNewsPress, 
   isAuthenticated = false,
-  refreshControl
+  refreshControl,
+  freemiumMeta = null
 }) {
   const navigation = useNavigation();
   const { theme } = useTheme();
-  const maxFreeContent = 10;
+  
+  // Default to 10 if not provided by the API
+  const maxFreeContent = useMemo(() => 
+    (freemiumMeta?.freeLimit) || 10, 
+  [freemiumMeta]);
+  
+  const hasMoreContent = useMemo(() => 
+    !isAuthenticated && (news.length > maxFreeContent || (freemiumMeta?.hasMoreContent)),
+  [isAuthenticated, news.length, maxFreeContent, freemiumMeta]);
+  
+  // Process news items to include freemium information
+  const processedNews = useMemo(() => {
+    // If user is authenticated, show all news
+    if (isAuthenticated) return news;
+    
+    // For non-authenticated users, apply freemium restrictions
+    return news.map((item, index) => {
+      // Mark items beyond the free limit as restricted
+      if (index >= maxFreeContent) {
+        return {
+          ...item,
+          freemiumRestricted: true
+        };
+      }
+      return item;
+    }).slice(0, news.length); // Keep all items for UI purposes
+  }, [news, isAuthenticated, maxFreeContent]);
+  
+  const displayedNews = useMemo(() => {
+    // For UI display, we'll show all items but with restricted flags
+    return processedNews;
+  }, [processedNews]);
   
   const handleNewsPress = (newsItem) => {
     if (onNewsPress) {
@@ -32,24 +66,26 @@ export default function NewsStream({
   };
 
   const renderNewsItem = ({ item, index }) => {
-    // Add premium flag for content beyond the free limit
-    const isPremium = !isAuthenticated && index >= maxFreeContent;
-    const newsWithPremiumFlag = isPremium ? { ...item, premium: true } : item;
+    const freemiumRestricted = !isAuthenticated && index >= maxFreeContent;
     
     return (
       <NewsCard 
-        news={newsWithPremiumFlag} 
+        news={item} 
         onPress={() => handleNewsPress(item)}
+        freemiumRestricted={freemiumRestricted}
       />
     );
   };
 
   const renderFooter = () => {
-    if (!isAuthenticated && news.length > maxFreeContent) {
+    if (hasMoreContent) {
       return (
         <View style={[
           styles.loginPromptContainer, 
-          { backgroundColor: theme.cardBackground }
+          { 
+            backgroundColor: theme.cardBackground,
+            borderColor: theme.border
+          }
         ]}>
           <Text style={[
             styles.loginPromptTitle,
@@ -61,8 +97,34 @@ export default function NewsStream({
             styles.loginPromptText,
             { color: theme.textSecondary }
           ]}>
-            Sign up for free to access all content, upload your own news, and more.
+            Sign in for free to access all content, upload your own news, and interact with the community.
           </Text>
+          <View style={styles.benefitsContainer}>
+            <View style={styles.benefitRow}>
+              <Feather name="check-circle" size={16} color={theme.success} />
+              <Text style={[styles.benefitText, { color: theme.text }]}>
+                Unlimited news access
+              </Text>
+            </View>
+            <View style={styles.benefitRow}>
+              <Feather name="check-circle" size={16} color={theme.success} />
+              <Text style={[styles.benefitText, { color: theme.text }]}>
+                Share your own news
+              </Text>
+            </View>
+            <View style={styles.benefitRow}>
+              <Feather name="check-circle" size={16} color={theme.success} />
+              <Text style={[styles.benefitText, { color: theme.text }]}>
+                Like and comment
+              </Text>
+            </View>
+            <View style={styles.benefitRow}>
+              <Feather name="check-circle" size={16} color={theme.success} />
+              <Text style={[styles.benefitText, { color: theme.text }]}>
+                Get location-based alerts
+              </Text>
+            </View>
+          </View>
           <TouchableOpacity 
             style={[
               styles.loginButton,
@@ -70,7 +132,7 @@ export default function NewsStream({
             ]}
             onPress={() => navigation.navigate('Auth')}
           >
-            <Text style={styles.loginButtonText}>Sign up / Login</Text>
+            <Text style={styles.loginButtonText}>Sign In</Text>
             <Feather name="arrow-right" size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
@@ -98,18 +160,32 @@ export default function NewsStream({
       ]}>
         Check back later for news updates in your area
       </Text>
+      
+      {isAuthenticated && (
+        <TouchableOpacity 
+          style={[styles.uploadButton, { backgroundColor: theme.primary }]}
+          onPress={() => navigation.navigate('UploadNews')}
+        >
+          <Feather name="upload" size={16} color="#FFFFFF" style={styles.uploadIcon} />
+          <Text style={styles.uploadButtonText}>Share News</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
   return (
     <FlatList
-      data={isAuthenticated ? news : news.slice(0, maxFreeContent)}
+      data={displayedNews}
       renderItem={renderNewsItem}
-      keyExtractor={(item) => item.id.toString()}
-      contentContainerStyle={styles.container}
+      keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
+      contentContainerStyle={[
+        styles.container,
+        displayedNews.length === 0 && styles.emptyList
+      ]}
       ListFooterComponent={renderFooter}
       ListEmptyComponent={renderEmptyComponent}
       refreshControl={refreshControl}
+      showsVerticalScrollIndicator={false}
     />
   );
 }
@@ -119,55 +195,92 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 32,
   },
+  emptyList: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
   loginPromptContainer: {
-    backgroundColor: '#F1F5F9',
     borderRadius: 12,
     padding: 20,
-    marginTop: 8,
+    marginTop: 24,
+    marginBottom: 16,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
   },
   loginPromptTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1E293B',
     marginBottom: 8,
     textAlign: 'center',
   },
   loginPromptText: {
     fontSize: 14,
-    color: '#64748B',
     textAlign: 'center',
     marginBottom: 16,
+    lineHeight: 20,
+  },
+  benefitsContainer: {
+    alignSelf: 'stretch',
+    marginBottom: 20,
+  },
+  benefitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  benefitText: {
+    marginLeft: 8,
+    fontSize: 14,
   },
   loginButton: {
     flexDirection: 'row',
-    backgroundColor: '#2563EB',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 200,
   },
   loginButtonText: {
     color: '#FFFFFF',
     fontWeight: 'bold',
     marginRight: 8,
+    fontSize: 16,
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     padding: 40,
+    flex: 1,
   },
   emptyText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1E293B',
     marginTop: 16,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#64748B',
     textAlign: 'center',
     marginTop: 8,
     maxWidth: 250,
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  uploadButton: {
+    flexDirection: 'row',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  uploadIcon: {
+    marginRight: 8,
+  },
+  uploadButtonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });

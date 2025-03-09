@@ -95,6 +95,12 @@ app.get('/test', (req, res) => {
   res.sendFile('test.html', { root: process.cwd() });
 });
 
+// Serve the WebSocket test page
+app.get('/websocket-test', (req, res) => {
+  console.log('GET request to WebSocket test endpoint');
+  res.sendFile('websocket-test.html', { root: process.cwd() });
+});
+
 // Add a test API endpoint
 app.get('/api/test', (req, res) => {
   console.log('Test API endpoint accessed');

@@ -73,8 +73,7 @@
  * @property {Date} createdAt - Creation date
  */
 
-// If this were a TypeScript project, we would export these types
-// Since we're using regular JavaScript, this file serves as documentation
+// User related schemas for login and registration
 
 /**
  * Auth credentials for login
@@ -93,5 +92,33 @@
  * @property {string} password - Password
  */
 
-// Export an empty object to make this a valid JS module
-module.exports = {};
+/**
+ * InsertUser schema - data needed to create a new user
+ * @typedef {Object} InsertUser
+ * @property {string} username - Unique username for the user
+ * @property {string} email - User's email address
+ * @property {string} password - User's password (will be hashed)
+ */
+
+/**
+ * User schema for selecting user data
+ * @typedef {Object} SelectUser
+ * @property {number} id - Unique user identifier
+ * @property {string} username - User's username
+ * @property {string} email - User's email address
+ * @property {string} [password] - Hashed password (only included in server-side operations)
+ * @property {Date} createdAt - When the user account was created
+ * @property {Object} settings - User's application settings
+ * @property {Object} stats - User's activity statistics
+ */
+
+// Export the schemas for use in both client and server
+const User = {};
+const InsertUser = {};
+const SelectUser = {};
+
+module.exports = {
+  User,
+  InsertUser,
+  SelectUser
+};

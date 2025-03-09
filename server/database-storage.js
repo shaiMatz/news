@@ -4,6 +4,7 @@ const { Op } = require('sequelize');
 const models = require('./database/models');
 const { sequelize, testConnection } = require('./database/config');
 const bcrypt = require('bcrypt');
+const logger = require('./utils/logger').createLogger('database');
 
 /**
  * DatabaseStorage implementation
@@ -21,34 +22,51 @@ class DatabaseStorage {
   async initialize() {
     try {
       // Test database connection
+      logger.info('Testing database connection...');
       const connected = await testConnection();
       if (!connected) {
-        console.error('Database connection failed, cannot initialize storage');
+        logger.error('Database connection failed, cannot initialize storage');
         return false;
       }
-
+      
+      logger.info('Database connection successful, syncing models...');
+      
       // Sync all models with the database
       await sequelize.sync();
-      console.log('Database models synchronized successfully');
+      logger.info('Database models synchronized successfully');
       return true;
     } catch (error) {
-      console.error('Error initializing database storage:', error);
+      logger.error('Error initializing database storage', { error: error.message, stack: error.stack });
       return false;
     }
   }
 
   // User-related methods
   async createUser(userData) {
-    const user = await models.User.create({
-      username: userData.username,
-      email: userData.email,
-      password: userData.password
-    });
-    
-    // Return user data without password
-    const userJson = user.toJSON();
-    delete userJson.password;
-    return userJson;
+    try {
+      logger.info('Creating new user account', { 
+        username: userData.username.substring(0, 3) + '***' // Privacy: only log first 3 chars
+      });
+      
+      const user = await models.User.create({
+        username: userData.username,
+        email: userData.email,
+        password: userData.password
+      });
+      
+      logger.info('User account created successfully', { userId: user.id });
+      
+      // Return user data without password
+      const userJson = user.toJSON();
+      delete userJson.password;
+      return userJson;
+    } catch (error) {
+      logger.error('Failed to create user account', { 
+        error: error.message,
+        code: error.code
+      });
+      throw error;
+    }
   }
 
   async getUserById(id) {
@@ -105,33 +123,58 @@ class DatabaseStorage {
 
   // News-related methods
   async createNews(newsData, authorId) {
-    // Create short description if not provided
-    if (!newsData.shortDescription && newsData.description) {
-      newsData.shortDescription = newsData.description.substring(0, 150) + 
-        (newsData.description.length > 150 ? '...' : '');
+    try {
+      logger.info('Creating new news item', { 
+        authorId, 
+        title: newsData.title, 
+        location: newsData.location,
+        isLive: newsData.isLive || false
+      });
+      
+      // Create short description if not provided
+      if (!newsData.shortDescription && newsData.description) {
+        newsData.shortDescription = newsData.description.substring(0, 150) + 
+          (newsData.description.length > 150 ? '...' : '');
+      }
+      
+      const news = await models.News.create({
+        title: newsData.title,
+        description: newsData.description,
+        shortDescription: newsData.shortDescription,
+        videoUrl: newsData.videoUrl,
+        thumbnail: newsData.thumbnail,
+        location: newsData.location,
+        coordinates: newsData.coordinates,
+        authorId,
+        isLive: newsData.isLive || false
+      });
+      
+      logger.debug('News item created', { 
+        newsId: news.id, 
+        authorId
+      });
+      
+      // Update user stats
+      const user = await models.User.findByPk(authorId);
+      if (user) {
+        const stats = user.stats || {};
+        stats.uploads = (stats.uploads || 0) + 1;
+        await user.update({ stats });
+        
+        logger.debug('User upload stats updated', { 
+          userId: authorId, 
+          totalUploads: stats.uploads 
+        });
+      }
+      
+      return news.toJSON();
+    } catch (error) {
+      logger.error('Failed to create news item', { 
+        error: error.message, 
+        stack: error.stack
+      });
+      throw error;
     }
-    
-    const news = await models.News.create({
-      title: newsData.title,
-      description: newsData.description,
-      shortDescription: newsData.shortDescription,
-      videoUrl: newsData.videoUrl,
-      thumbnail: newsData.thumbnail,
-      location: newsData.location,
-      coordinates: newsData.coordinates,
-      authorId,
-      isLive: newsData.isLive || false
-    });
-    
-    // Update user stats
-    const user = await models.User.findByPk(authorId);
-    if (user) {
-      const stats = user.stats || {};
-      stats.uploads = (stats.uploads || 0) + 1;
-      await user.update({ stats });
-    }
-    
-    return news.toJSON();
   }
 
   async getAllNews(limit = null) {

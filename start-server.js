@@ -3,12 +3,15 @@
  * This file is separated from the React Native bundler
  */
 
+// Import logger
+const logger = require('./server/utils/logger').createLogger('startup');
+
 // Print startup message
-console.log('Starting NewsGeo server...');
-console.log('========================================');
+logger.info('Starting NewsGeo server...');
+logger.info('========================================');
 
 // Start the Express server (directly requiring the server file)
 require('./server/index.js');
 
-console.log('Server initialization complete');
-console.log('========================================');
+logger.info('Server initialization complete');
+logger.info('========================================');

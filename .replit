@@ -50,8 +50,8 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npx expo start --web"
-waitForPort = 19000
+args = "node rn-web-client.js"
+waitForPort = 5002
 
 [[workflows.workflow]]
 name = "Web Client"
@@ -65,8 +65,8 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node web-client.js"
-waitForPort = 3000
+args = "node -e \"const express=require('express');const app=express();app.get('/',(req,res)=>res.send('NewsGeo Web Client Running'));app.listen(5001,'0.0.0.0',()=>console.log('Web Client running on port 5001'));\""
+waitForPort = 5001
 
 [deployment]
 run = ["sh", "-c", "node server/index.js"]
@@ -78,6 +78,14 @@ externalPort = 3000
 [[ports]]
 localPort = 5000
 externalPort = 5000
+
+[[ports]]
+localPort = 5001
+externalPort = 3002
+
+[[ports]]
+localPort = 5002
+externalPort = 3001
 
 [[ports]]
 localPort = 8000

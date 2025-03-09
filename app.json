@@ -15,21 +15,47 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.newsgeo.app",
+      "buildNumber": "1.0.0",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "NewsGeo uses your location to show you local news content and events.",
+        "NSCameraUsageDescription": "NewsGeo needs camera access to allow you to upload photos and videos for news content.",
+        "NSPhotoLibraryUsageDescription": "NewsGeo needs photo library access to allow you to share images."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./generated-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.newsgeo.app",
+      "versionCode": 1,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "favicon": "./generated-icon.png",
       "bundler": "metro"
     },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow NewsGeo to use your location to deliver local news content."
+        }
+      ]
+    ],
     "extra": {
-      "apiUrl": "https://${REPL_SLUG}.${REPL_OWNER}.repl.co/api"
-    },
-    "plugins": []
+      "apiUrl": "https://${REPL_SLUG}.${REPL_OWNER}.repl.co/api",
+      "eas": {
+        "projectId": "newsgeo-app"
+      }
+    }
   }
 }

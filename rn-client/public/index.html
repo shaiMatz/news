@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>NewsGeo React Native Web</title>
+    <style>
+      body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; }
+      #root { display: flex; flex-direction: column; height: 100%; }
+      header { background-color: #2c3e50; color: white; padding: 1rem; text-align: center; }
+      main { flex: 1; padding: 1rem; }
+      .loading { display: flex; justify-content: center; align-items: center; height: 100%; }
+      .card { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+      button { background-color: #3498db; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; }
+      button:hover { background-color: #2980b9; }
+      footer { background-color: #34495e; color: white; padding: 1rem; text-align: center; }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <header>
+        <h1>NewsGeo</h1>
+        <p>Your location-based news platform</p>
+      </header>
+      <main>
+        <div class="card">
+          <h2>Welcome to NewsGeo</h2>
+          <p>This is a simplified React Native Web client. The full application is under development.</p>
+          <p>Server Status: <span id="server-status">Checking...</span></p>
+        </div>
+        <div class="card">
+          <h2>Location Services</h2>
+          <p>Your current location: <span id="location">Detecting...</span></p>
+          <button id="get-location">Update Location</button>
+        </div>
+        <div class="card">
+          <h2>Latest News</h2>
+          <div id="news-container">
+            <div class="loading">Loading news...</div>
+          </div>
+        </div>
+      </main>
+      <footer>
+        <p>&copy; 2025 NewsGeo - All rights reserved</p>
+      </footer>
+    </div>
+    <script>
+      // Check server status
+      fetch('http://0.0.0.0:5000/api/news', { method: 'GET' })
+        .then(response => {
+          document.getElementById('server-status').textContent = 
+            response.ok ? 'Connected' : 'Error connecting';
+        })
+        .catch(error => {
+          document.getElementById('server-status').textContent = 'Error: ' + error.message;
+        });
+      
+      // Location detection
+      document.getElementById('get-location').addEventListener('click', () => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            position => {
+              const lat = position.coords.latitude;
+              const lng = position.coords.longitude;
+              document.getElementById('location').textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+              
+              // Fetch news for this location
+              fetchNewsForLocation(lat, lng);
+            },
+            error => {
+              document.getElementById('location').textContent = 'Error: ' + error.message;
+            }
+          );
+        } else {
+          document.getElementById('location').textContent = 'Geolocation is not supported by this browser.';
+        }
+      });
+      
+      // Function to fetch news
+      function fetchNewsForLocation(lat, lng) {
+        const newsContainer = document.getElementById('news-container');
+        newsContainer.innerHTML = '<div class="loading">Fetching news for your location...</div>';
+        
+        fetch(`/api/news?lat=${lat}&lng=${lng}`)
+          .then(response => response.json())
+          .then(data => {
+            newsContainer.innerHTML = '';
+            data.forEach(item => {
+              const newsItem = document.createElement('div');
+              newsItem.className = 'card';
+              newsItem.innerHTML = `
+                <h3>${item.title}</h3>
+                <p>${item.summary}</p>
+              `;
+              newsContainer.appendChild(newsItem);
+            });
+          })
+          .catch(error => {
+            newsContainer.innerHTML = `<p>Error loading news: ${error.message}</p>`;
+          });
+      }
+
+      // Automatically try to get location on page load
+      window.addEventListener('load', () => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            position => {
+              const lat = position.coords.latitude;
+              const lng = position.coords.longitude;
+              document.getElementById('location').textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+              fetchNewsForLocation(lat, lng);
+            },
+            error => {
+              document.getElementById('location').textContent = 'Error: ' + error.message;
+            }
+          );
+        }
+      });
+    </script>
+  </body>
+</html>

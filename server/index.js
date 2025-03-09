@@ -16,6 +16,7 @@ const streamingRoutes = require('./routes/streaming');
 const app = express();
 const PORT = process.env.PORT || 8080;
 const httpServer = createServer(app);
+require('dotenv').config();
 
 // Set up middleware
 app.use(cors({

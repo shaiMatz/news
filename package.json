@@ -3,43 +3,66 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start-server": "node server/index.js",
+    "start-client": "cd src && yarn expo run:ios",
+    "start": "expo start --dev-client",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@expo/metro-config": "^0.19.11",
+    "@expo/metro-config": "~0.19.0",
+    "@expo/metro-runtime": "~4.0.1",
+    "@expo/prebuild-config": "~8.0.0",
     "@react-native-community/cli-server-api": "^17.0.0",
     "@react-navigation/native": "^7.0.15",
     "@react-navigation/stack": "^7.1.2",
     "@tanstack/react-query": "^5.67.2",
-    "@types/react": "~18.0.27",
+    "@types/react": "~18.3.12",
     "body-parser": "^1.20.3",
+    "concurrently": "^9.1.2",
     "cors": "^2.8.5",
     "cosmiconfig": "^9.0.0",
     "debug": "^4.4.0",
-    "expo": "^48.0.21",
-    "expo-constants": "~14.2.1",
-    "expo-location": "~15.1.1",
-    "expo-status-bar": "~1.4.4",
+    "expo": "^52.0.37",
+    "expo-constants": "~17.0.7",
+    "expo-location": "~18.0.7",
+    "expo-splash-screen": "~0.29.22",
+    "expo-status-bar": "~2.0.1",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
     "memorystore": "^1.6.7",
+    "metro": "^0.81.0",
+    "metro-config": "^0.81.0",
+    "metro-react-native-babel-transformer": "^0.77.0",
+    "metro-resolver": "^0.81.0",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-native": "0.71.14",
-    "react-native-gesture-handler": "~2.9.0",
-    "react-native-safe-area-context": "4.5.0",
-    "react-native-screens": "~3.20.0",
-    "react-native-web": "^0.18.12",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-native": "0.76.7",
+    "react-native-gesture-handler": "~2.20.2",
+    "react-native-safe-area-context": "4.12.0",
+    "react-native-screens": "~4.4.0",
+    "react-native-web": "~0.19.13",
     "socket.io": "^4.8.1",
-    "typescript": "^4.9.4",
+    "typescript": "^5.3.3",
     "vite": "^6.2.1",
     "wouter": "^3.6.0",
     "ws": "^8.18.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.20.0"
+  },
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "listUnknownPackages": false
+      }
+    }
   }
 }

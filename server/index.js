@@ -14,7 +14,7 @@ const streamingRoutes = require('./routes/streaming');
 
 // Initialize Express app
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8080;
 const httpServer = createServer(app);
 
 // Set up middleware
@@ -47,13 +47,13 @@ setupAuth(app, storage);
 // Function to send real-time notifications via WebSocket
 const sendNotificationToUser = (userId, notification) => {
   if (!userId || !notification) return false;
-  
+
   let sent = false;
   wss.clients.forEach((client) => {
     if (
-      client.readyState === WebSocket.OPEN && 
-      client.clientInfo && 
-      client.clientInfo.type === 'notifications' && 
+      client.readyState === WebSocket.OPEN &&
+      client.clientInfo &&
+      client.clientInfo.type === 'notifications' &&
       client.clientInfo.userId === userId.toString()
     ) {
       client.send(JSON.stringify({
@@ -64,7 +64,7 @@ const sendNotificationToUser = (userId, notification) => {
       sent = true;
     }
   });
-  
+
   return sent;
 };
 
@@ -112,8 +112,8 @@ app.use((err, req, res, next) => {
   console.error('Server error:', err);
   res.status(500).json({
     error: true,
-    message: process.env.NODE_ENV === 'production' 
-      ? 'Internal server error' 
+    message: process.env.NODE_ENV === 'production'
+      ? 'Internal server error'
       : err.message
   });
 });
@@ -136,47 +136,47 @@ const activeStreams = new Map();
 // Socket.IO connection handling
 io.on('connection', (socket) => {
   console.log('New client connected via Socket.IO:', socket.id);
-  
+
   // Handle client joining a specific news stream
   socket.on('join-stream', (newsId) => {
     console.log(`Client ${socket.id} joined stream for news ID: ${newsId}`);
     socket.join(`news:${newsId}`);
-    
+
     // Notify others in the room that someone joined
     socket.to(`news:${newsId}`).emit('viewer-joined', {
       viewerId: socket.id,
       timestamp: new Date()
     });
-    
+
     // Update viewer count and broadcast to all in room
     const streamInfo = activeStreams.get(newsId) || { viewers: 0 };
     streamInfo.viewers++;
     activeStreams.set(newsId, streamInfo);
-    
+
     io.to(`news:${newsId}`).emit('viewer-count', {
       newsId,
       count: streamInfo.viewers
     });
   });
-  
+
   // Handle client leaving a stream
   socket.on('leave-stream', (newsId) => {
     console.log(`Client ${socket.id} left stream for news ID: ${newsId}`);
     socket.leave(`news:${newsId}`);
-    
+
     // Update viewer count
     const streamInfo = activeStreams.get(newsId);
     if (streamInfo && streamInfo.viewers > 0) {
       streamInfo.viewers--;
       activeStreams.set(newsId, streamInfo);
-      
+
       io.to(`news:${newsId}`).emit('viewer-count', {
         newsId,
         count: streamInfo.viewers
       });
     }
   });
-  
+
   // Handle comments on a news stream
   socket.on('comment', ({ newsId, text, username }) => {
     const comment = {
@@ -185,11 +185,11 @@ io.on('connection', (socket) => {
       username,
       timestamp: new Date()
     };
-    
+
     // Broadcast comment to all viewers of this news
     io.to(`news:${newsId}`).emit('new-comment', comment);
   });
-  
+
   // Handle reactions (likes, etc.) on a news stream
   socket.on('reaction', ({ newsId, type, username }) => {
     io.to(`news:${newsId}`).emit('new-reaction', {
@@ -198,7 +198,7 @@ io.on('connection', (socket) => {
       timestamp: new Date()
     });
   });
-  
+
   // Handle live stream metadata updates
   socket.on('stream-meta', ({ newsId, metadata }) => {
     io.to(`news:${newsId}`).emit('stream-meta-update', {
@@ -207,14 +207,14 @@ io.on('connection', (socket) => {
       timestamp: new Date()
     });
   });
-  
+
   // Handle location-based news alerts
   socket.on('location-update', ({ latitude, longitude }) => {
     // In a real implementation, we would find news relevant to this location
     // For now, just log it
     console.log(`Client ${socket.id} updated location: ${latitude}, ${longitude}`);
   });
-  
+
   // Handle disconnect
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
@@ -225,12 +225,12 @@ io.on('connection', (socket) => {
 // WebSocket connection handling for video streaming and notifications
 wss.on('connection', (ws, req) => {
   console.log('New client connected via WebSocket');
-  
+
   // Extract parameters from URL
   const url = new URL(req.url, `http://${req.headers.host}`);
   const newsId = url.searchParams.get('newsId');
   const type = url.searchParams.get('type');
-  
+
   // Track client information for management
   const clientInfo = {
     id: Date.now().toString(),
@@ -238,15 +238,15 @@ wss.on('connection', (ws, req) => {
     userId: url.searchParams.get('userId'),
     lastPingTime: Date.now()
   };
-  
+
   // Store client info on the connection
   ws.clientInfo = clientInfo;
-  
+
   // Handle specific connection types
   if (type === 'notifications') {
     console.log(`WebSocket client connected for notifications, userId: ${clientInfo.userId}`);
     // Add any notification subscription logic here
-    
+
     // Send a test notification 5 seconds after connection
     setTimeout(() => {
       if (ws.readyState === WebSocket.OPEN) {
@@ -261,50 +261,50 @@ wss.on('connection', (ws, req) => {
             read: false
           }
         };
-        
+
         console.log('Sending test notification to client');
         ws.send(JSON.stringify(testNotification));
       }
     }, 5000);
   } else if (newsId) {
     console.log(`WebSocket client connected to news ID: ${newsId}`);
-    
+
     // Set up stream if it doesn't exist
     if (!activeStreams.has(newsId)) {
       activeStreams.set(newsId, { viewers: 0 });
     }
-    
+
     // Update viewer count
     const streamInfo = activeStreams.get(newsId);
     streamInfo.viewers++;
-    
+
     // Notify Socket.IO clients about viewer count change
     io.to(`news:${newsId}`).emit('viewer-count', {
       newsId,
       count: streamInfo.viewers
     });
   }
-  
+
   // Handle incoming WebSocket messages
   ws.on('message', (data) => {
     try {
       // Try to parse as JSON for command messages
       const jsonData = JSON.parse(data.toString());
-      
+
       // Handle different message types
       if (jsonData.type === 'ping') {
         // Update last ping time
         if (ws.clientInfo) {
           ws.clientInfo.lastPingTime = Date.now();
         }
-        
+
         // Send a pong response
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: 'pong', time: Date.now() }));
         }
         return;
       }
-      
+
       // Handle auth messages
       if (jsonData.type === 'auth') {
         // Update client info with user ID and client type from auth
@@ -313,11 +313,11 @@ wss.on('connection', (ws, req) => {
             ws.clientInfo.userId = jsonData.userId;
             console.log(`WebSocket client authenticated: ${jsonData.userId}`);
           }
-          
+
           if (jsonData.clientType) {
             ws.clientInfo.type = jsonData.clientType;
             console.log(`WebSocket client type set to: ${jsonData.clientType}`);
-            
+
             // If we're setting to notifications type, send an immediate test notification
             if (jsonData.clientType === 'notifications') {
               // Clear any existing timeout and send immediately
@@ -332,7 +332,7 @@ wss.on('connection', (ws, req) => {
                   read: false
                 }
               };
-              
+
               console.log('Sending immediate test notification to client');
               ws.send(JSON.stringify(testNotification));
             }
@@ -340,10 +340,10 @@ wss.on('connection', (ws, req) => {
         }
         return;
       }
-      
+
       // Handle other JSON message types
       console.log(`Received message type: ${jsonData.type}`);
-      
+
     } catch (e) {
       // Not JSON, handle as binary data for streaming
       if (newsId && ws.readyState === WebSocket.OPEN) {
@@ -356,17 +356,17 @@ wss.on('connection', (ws, req) => {
       }
     }
   });
-  
+
   // Handle WebSocket client disconnect
   ws.on('close', () => {
     console.log('WebSocket client disconnected');
-    
+
     if (newsId) {
       // Update viewer count
       const streamInfo = activeStreams.get(newsId);
       if (streamInfo && streamInfo.viewers > 0) {
         streamInfo.viewers--;
-        
+
         // Notify Socket.IO clients about viewer count change
         io.to(`news:${newsId}`).emit('viewer-count', {
           newsId,
@@ -375,7 +375,7 @@ wss.on('connection', (ws, req) => {
       }
     }
   });
-  
+
   // Send welcome message
   ws.send(JSON.stringify({
     type: 'connected',

@@ -5,12 +5,12 @@ import {
 } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 
-const API_BASE_URL = "";
+const API_BASE_URL = "http://localhost:8080";
 
 // API request helper function
 async function apiRequest(method, endpoint, data = null) {
   const url = `${API_BASE_URL}${endpoint}`;
-  
+
   const options = {
     method,
     headers: {
@@ -18,18 +18,18 @@ async function apiRequest(method, endpoint, data = null) {
     },
     credentials: 'include',
   };
-  
+
   if (data) {
     options.body = JSON.stringify(data);
   }
-  
+
   const response = await fetch(url, options);
-  
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.message || `Request failed with status ${response.status}`);
   }
-  
+
   return method === 'DELETE' ? null : response.json();
 }
 
@@ -52,7 +52,7 @@ const AuthContext = createContext(null);
 // Auth provider component
 export function AuthProvider({ children }) {
   const [, navigate] = useLocation();
-  
+
   // Query to get the current user
   const {
     data: user,
@@ -64,7 +64,7 @@ export function AuthProvider({ children }) {
     queryFn: getQueryFn({ on401: 'returnNull' }),
     retry: false,
   });
-  
+
   // Login mutation
   const loginMutation = useMutation({
     mutationFn: async (credentials) => {
@@ -75,7 +75,7 @@ export function AuthProvider({ children }) {
       navigate('/');
     },
   });
-  
+
   // Register mutation
   const registerMutation = useMutation({
     mutationFn: async (userData) => {
@@ -86,7 +86,7 @@ export function AuthProvider({ children }) {
       navigate('/');
     },
   });
-  
+
   // Logout mutation
   const logoutMutation = useMutation({
     mutationFn: async () => {
@@ -97,7 +97,7 @@ export function AuthProvider({ children }) {
       navigate('/auth');
     },
   });
-  
+
   // Context value
   const value = {
     user,
@@ -108,7 +108,7 @@ export function AuthProvider({ children }) {
     registerMutation,
     logoutMutation,
   };
-  
+
   return (
     <AuthContext.Provider value={value}>
       {children}

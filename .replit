@@ -1,4 +1,4 @@
-modules = ["nodejs-20"]
+modules = ["nodejs-20", "python-3.11"]
 
 [nix]
 channel = "stable-24_05"
@@ -65,7 +65,7 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node -e \"const express=require('express');const app=express();app.get('/',(req,res)=>res.send('NewsGeo Web Client Running'));app.listen(5001,'0.0.0.0',()=>console.log('Web Client running on port 5001'));\""
+args = "node simplified-web-client.js"
 waitForPort = 5001
 
 [deployment]

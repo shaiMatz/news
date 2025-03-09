@@ -1,13 +1,29 @@
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
+const bodyParser = require('body-parser');
+// For compatibility with Node.js
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+// Getting hostname for proper API and WebSocket URLs
+const os = require('os');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
 const SERVER_PORT = 5000;
 
-// Enable CORS for all routes
-app.use(cors());
+// Get hostname for internal communication
+const hostname = process.env.REPL_SLUG ? 
+  `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : 
+  'localhost';
+
+// Enable CORS for all routes with credentials support
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
+
+// Parse JSON request bodies
+app.use(bodyParser.json());
 
 // Serve static files from the public directory
 app.use(express.static('public'));
@@ -19,25 +35,91 @@ app.use('/src', express.static('src'));
 app.use('/node_modules', express.static('node_modules'));
 
 // API proxy to forward requests to the server running on port 5000
-app.use('/api', (req, res, next) => {
-  console.log(`Proxying API request to: ${req.url}`);
+app.use('/api', (req, res) => {
+  console.log(`Proxying API request to: ${req.url}, Method: ${req.method}`);
+  
+  // Extract cookies to forward
+  const cookies = req.headers.cookie;
+  
+  // Extract authorization header for JWT tokens
+  const authHeader = req.headers.authorization;
+  
+  // Prepare headers for the proxied request
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  
+  // Add cookies if available
+  if (cookies) {
+    headers['Cookie'] = cookies;
+  }
+  
+  // Add authorization header if available
+  if (authHeader) {
+    headers['Authorization'] = authHeader;
+  }
+  
+  // Prepare request body for non-GET requests
+  let requestBody = undefined;
+  if (req.method !== 'GET' && req.method !== 'HEAD' && req.body) {
+    requestBody = JSON.stringify(req.body);
+    console.log(`Request body: ${requestBody}`);
+  }
+  
   // Forward the request to the actual API server
-  fetch(`http://localhost:${SERVER_PORT}${req.url}`, {
+  const apiUrl = process.env.REPL_SLUG ? 
+    `https://${hostname}:${SERVER_PORT}${req.url}` : 
+    `http://localhost:${SERVER_PORT}${req.url}`;
+    
+  console.log(`Proxying to: ${apiUrl}`);
+    
+  fetch(apiUrl, {
     method: req.method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...req.headers
-    },
-    body: req.method !== 'GET' && req.method !== 'HEAD' ? JSON.stringify(req.body) : undefined
+    headers: headers,
+    body: requestBody,
+    // Required to handle cookies correctly
+    credentials: 'include'
   })
   .then(response => {
-    return response.json().then(data => {
-      res.status(response.status).json(data);
+    // Copy all headers from the API response to our response
+    const responseHeaders = response.headers.raw();
+    Object.keys(responseHeaders).forEach(key => {
+      // Skip content-encoding as it can cause issues
+      if (key !== 'content-encoding') {
+        const value = responseHeaders[key];
+        res.set(key, value);
+      }
     });
+    
+    // Set the response status code
+    res.status(response.status);
+    
+    // Return response based on content type
+    const contentType = response.headers.get('content-type');
+    
+    if (contentType && contentType.includes('application/json')) {
+      return response.json()
+        .then(data => {
+          res.json(data);
+        })
+        .catch(error => {
+          console.error('Error parsing JSON response:', error);
+          res.send('');
+        });
+    } else {
+      return response.text()
+        .then(text => {
+          res.send(text);
+        });
+    }
   })
   .catch(error => {
     console.error('API Proxy error:', error);
-    res.status(500).json({ error: 'Error proxying to API server' });
+    res.status(500).json({ 
+      error: true, 
+      message: 'Error proxying to API server',
+      details: error.message
+    });
   });
 });
 
@@ -77,6 +159,20 @@ app.get('/', (req, res) => {
               <li>Receive notifications</li>
             </ul>
             <a href="/auth" class="button">Go to Authentication</a>
+          </div>
+          
+          <div class="card">
+            <h2>Security Features</h2>
+            <p>This application implements the following security measures:</p>
+            <ul>
+              <li><strong>JWT Authentication</strong> - Secure token-based authentication</li>
+              <li><strong>Session Support</strong> - Persistent session management</li>
+              <li><strong>Password Hashing</strong> - Using bcrypt for secure password storage</li>
+              <li><strong>CSRF Protection</strong> - Prevention of cross-site request forgery</li>
+              <li><strong>Rate Limiting</strong> - Protection against brute force attacks</li>
+              <li><strong>Secure Headers</strong> - Properly configured security headers</li>
+              <li><strong>CORS Configuration</strong> - Controlled cross-origin resource sharing</li>
+            </ul>
           </div>
           
           <div class="card">

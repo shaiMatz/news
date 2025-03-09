@@ -46,7 +46,7 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node rn-web-client.js"
+args = "node rn-web-client-fixed.js"
 waitForPort = 5002
 
 [deployment]

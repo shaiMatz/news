@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator, Image, Text } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { Video } from 'expo-av';
+import { useTheme } from '../contexts/ThemeContext';
 
 /**
  * Custom video player component
@@ -11,6 +12,7 @@ import { Video } from 'expo-av';
  * @param {string} props.thumbnail - URL of the thumbnail image
  */
 export default function VideoPlayer({ videoUrl, thumbnail }) {
+  const { theme } = useTheme();
   const [status, setStatus] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -74,19 +76,27 @@ export default function VideoPlayer({ videoUrl, thumbnail }) {
       
       {error && (
         <View style={styles.errorContainer}>
-          <Feather name="alert-circle" size={24} color="#EF4444" />
-          <Text style={styles.errorText}>Failed to load video</Text>
+          <Feather name="alert-circle" size={24} color={theme.danger} />
+          <Text style={[styles.errorText, { color: theme.isDark ? '#FFFFFF' : '#FFFFFF' }]}>
+            Failed to load video
+          </Text>
         </View>
       )}
       
       {loading && (
-        <View style={styles.loadingContainer}>
+        <View style={[
+          styles.loadingContainer,
+          { backgroundColor: theme.isDark ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.3)' }
+        ]}>
           <ActivityIndicator size="large" color="#FFFFFF" />
         </View>
       )}
       
       <TouchableOpacity
-        style={styles.playPauseButton}
+        style={[
+          styles.playPauseButton,
+          { backgroundColor: theme.primary + 'CC' }  // Add some transparency
+        ]}
         onPress={handlePlayPause}
       >
         <Feather 
@@ -99,11 +109,21 @@ export default function VideoPlayer({ videoUrl, thumbnail }) {
       <View style={styles.controlsOverlay}>
         {!showThumbnail && !loading && (
           <>
-            <TouchableOpacity style={styles.controlButton}>
+            <TouchableOpacity 
+              style={[
+                styles.controlButton,
+                { backgroundColor: theme.primary + 'CC' }
+              ]}
+            >
               <Feather name="volume-2" size={20} color="#FFFFFF" />
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.controlButton}>
+            <TouchableOpacity 
+              style={[
+                styles.controlButton,
+                { backgroundColor: theme.primary + 'CC' }
+              ]}
+            >
               <Feather name="maximize" size={20} color="#FFFFFF" />
             </TouchableOpacity>
           </>

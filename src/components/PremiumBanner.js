@@ -2,32 +2,50 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../contexts/ThemeContext';
 
 /**
  * Banner component to encourage users to sign up for premium features
  */
 export default function PremiumBanner() {
   const navigation = useNavigation();
+  const { theme } = useTheme();
 
   const handleSignUpPress = () => {
     navigation.navigate('Auth');
   };
 
+  const bannerBackground = theme.isDark 
+    ? 'rgba(37, 99, 235, 0.2)' 
+    : '#EFF6FF';
+
   return (
-    <View style={styles.container}>
+    <View style={[
+      styles.container,
+      { 
+        backgroundColor: bannerBackground,
+        shadowColor: theme.shadow
+      }
+    ]}>
       <View style={styles.iconContainer}>
-        <Feather name="alert-circle" size={24} color="#2563EB" />
+        <Feather name="alert-circle" size={24} color={theme.primary} />
       </View>
       <View style={styles.textContainer}>
-        <Text style={styles.title}>
+        <Text style={[
+          styles.title,
+          { color: theme.isDark ? theme.primary : '#1E40AF' }
+        ]}>
           Viewing Limited Content
         </Text>
-        <Text style={styles.message}>
+        <Text style={[
+          styles.message,
+          { color: theme.isDark ? theme.textSecondary : '#3B82F6' }
+        ]}>
           Sign in to unlock all news, sharing, and more.
         </Text>
       </View>
       <TouchableOpacity 
-        style={styles.button}
+        style={[styles.button, { backgroundColor: theme.primary }]}
         onPress={handleSignUpPress}
       >
         <Text style={styles.buttonText}>Sign in</Text>

@@ -4,7 +4,7 @@ const bodyParser = require('body-parser');
 const session = require('express-session');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
-const { WebSocketServer } = require('ws');
+const { WebSocketServer, WebSocket } = require('ws');
 const { setupAuth } = require('./auth');
 const { setupStorage } = require('./storage');
 const newsRoutes = require('./routes/news');
@@ -43,10 +43,35 @@ app.use(session({
 // Set up authentication
 setupAuth(app, storage);
 
-// Set up API routes
+// Define utility functions first so they can be used in routes
+// Function to send real-time notifications via WebSocket
+const sendNotificationToUser = (userId, notification) => {
+  if (!userId || !notification) return false;
+  
+  let sent = false;
+  wss.clients.forEach((client) => {
+    if (
+      client.readyState === WebSocket.OPEN && 
+      client.clientInfo && 
+      client.clientInfo.type === 'notifications' && 
+      client.clientInfo.userId === userId.toString()
+    ) {
+      client.send(JSON.stringify({
+        type: 'notification',
+        ...notification,
+        time: Date.now()
+      }));
+      sent = true;
+    }
+  });
+  
+  return sent;
+};
+
+// Set up API routes with access to utility functions
 app.use('/api/news', newsRoutes(storage));
 app.use('/api/profile', userRoutes(storage));
-app.use('/api/notifications', notificationsRoutes(storage));
+app.use('/api/notifications', notificationsRoutes(storage, { sendNotificationToUser }));
 app.use('/api/streams', streamingRoutes(storage));
 
 // Serve static files
@@ -55,6 +80,12 @@ app.use(express.static(process.cwd()));
 // Serve the main page at the root
 app.get('/', (req, res) => {
   console.log('GET request to root endpoint');
+  res.sendFile('index.html', { root: process.cwd() });
+});
+
+// Add a more specific route to serve index.html
+app.get('/index.html', (req, res) => {
+  console.log('GET request to index.html endpoint');
   res.sendFile('index.html', { root: process.cwd() });
 });
 
@@ -185,15 +216,51 @@ io.on('connection', (socket) => {
   });
 });
 
-// WebSocket connection handling (for more direct video streaming)
+// WebSocket connection handling for video streaming and notifications
 wss.on('connection', (ws, req) => {
   console.log('New client connected via WebSocket');
   
-  // Extract newsId from URL if present
+  // Extract parameters from URL
   const url = new URL(req.url, `http://${req.headers.host}`);
   const newsId = url.searchParams.get('newsId');
+  const type = url.searchParams.get('type');
   
-  if (newsId) {
+  // Track client information for management
+  const clientInfo = {
+    id: Date.now().toString(),
+    type: type || 'general',
+    userId: url.searchParams.get('userId'),
+    lastPingTime: Date.now()
+  };
+  
+  // Store client info on the connection
+  ws.clientInfo = clientInfo;
+  
+  // Handle specific connection types
+  if (type === 'notifications') {
+    console.log(`WebSocket client connected for notifications, userId: ${clientInfo.userId}`);
+    // Add any notification subscription logic here
+    
+    // Send a test notification 5 seconds after connection
+    setTimeout(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        const testNotification = {
+          type: 'notification',
+          notification: {
+            id: Date.now(),
+            title: 'Welcome to NewsGeo!',
+            content: 'Your notifications are now active. You will receive real-time updates for news, likes, and comments.',
+            type: 'news',
+            time: new Date().toISOString(),
+            read: false
+          }
+        };
+        
+        console.log('Sending test notification to client');
+        ws.send(JSON.stringify(testNotification));
+      }
+    }, 5000);
+  } else if (newsId) {
     console.log(`WebSocket client connected to news ID: ${newsId}`);
     
     // Set up stream if it doesn't exist
@@ -212,15 +279,75 @@ wss.on('connection', (ws, req) => {
     });
   }
   
-  // Handle incoming WebSocket messages (e.g., video chunks)
+  // Handle incoming WebSocket messages
   ws.on('message', (data) => {
-    if (newsId && ws.readyState === ws.OPEN) {
-      // Broadcast the data to all other WebSocket clients watching this news
-      wss.clients.forEach((client) => {
-        if (client !== ws && client.readyState === client.OPEN) {
-          client.send(data);
+    try {
+      // Try to parse as JSON for command messages
+      const jsonData = JSON.parse(data.toString());
+      
+      // Handle different message types
+      if (jsonData.type === 'ping') {
+        // Update last ping time
+        if (ws.clientInfo) {
+          ws.clientInfo.lastPingTime = Date.now();
         }
-      });
+        
+        // Send a pong response
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'pong', time: Date.now() }));
+        }
+        return;
+      }
+      
+      // Handle auth messages
+      if (jsonData.type === 'auth') {
+        // Update client info with user ID and client type from auth
+        if (ws.clientInfo) {
+          if (jsonData.userId) {
+            ws.clientInfo.userId = jsonData.userId;
+            console.log(`WebSocket client authenticated: ${jsonData.userId}`);
+          }
+          
+          if (jsonData.clientType) {
+            ws.clientInfo.type = jsonData.clientType;
+            console.log(`WebSocket client type set to: ${jsonData.clientType}`);
+            
+            // If we're setting to notifications type, send an immediate test notification
+            if (jsonData.clientType === 'notifications') {
+              // Clear any existing timeout and send immediately
+              const testNotification = {
+                type: 'notification',
+                notification: {
+                  id: Date.now(),
+                  title: 'Notification System Active',
+                  content: 'Your notification connection is working properly.',
+                  type: 'system',
+                  time: new Date().toISOString(),
+                  read: false
+                }
+              };
+              
+              console.log('Sending immediate test notification to client');
+              ws.send(JSON.stringify(testNotification));
+            }
+          }
+        }
+        return;
+      }
+      
+      // Handle other JSON message types
+      console.log(`Received message type: ${jsonData.type}`);
+      
+    } catch (e) {
+      // Not JSON, handle as binary data for streaming
+      if (newsId && ws.readyState === WebSocket.OPEN) {
+        // Broadcast the data to all other WebSocket clients watching this news
+        wss.clients.forEach((client) => {
+          if (client !== ws && client.readyState === WebSocket.OPEN) {
+            client.send(data);
+          }
+        });
+      }
     }
   });
   
@@ -242,7 +369,31 @@ wss.on('connection', (ws, req) => {
       }
     }
   });
+  
+  // Send welcome message
+  ws.send(JSON.stringify({
+    type: 'connected',
+    message: 'Connected to NewsGeo WebSocket server',
+    clientId: clientInfo.id,
+    time: Date.now()
+  }));
 });
+
+// Note: sendNotificationToUser function is already defined above
+
+// Heartbeat interval to clean up dead connections
+setInterval(() => {
+  const now = Date.now();
+  wss.clients.forEach((ws) => {
+    if (ws.clientInfo) {
+      // If no ping for 2 minutes, close the connection
+      if (now - ws.clientInfo.lastPingTime > 120000) {
+        console.log('Closing inactive WebSocket connection');
+        ws.close(1001, 'Connection timeout');
+      }
+    }
+  });
+}, 60000); // Check every minute
 
 // Start the server
 httpServer.listen(PORT, '0.0.0.0', () => {

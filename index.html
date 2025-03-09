@@ -102,6 +102,127 @@
       padding: 20px;
       color: #64748b;
     }
+    .badge {
+      display: inline-block;
+      background-color: #ef4444;
+      color: white;
+      font-size: 12px;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      line-height: 18px;
+      text-align: center;
+      margin-left: 5px;
+    }
+    .notification-filters {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 15px;
+      overflow-x: auto;
+      padding-bottom: 5px;
+    }
+    .filter-btn {
+      font-size: 12px;
+      padding: 4px 10px;
+      background-color: #f1f5f9;
+      color: #64748b;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      cursor: pointer;
+      width: auto;
+    }
+    .filter-btn.active {
+      background-color: #2563EB;
+      color: white;
+      border-color: #2563EB;
+    }
+    #notification-list {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .notification-item {
+      padding: 12px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .notification-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background-color: #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .notification-icon i {
+      font-size: 14px;
+      color: #64748b;
+    }
+    .notification-content {
+      flex: 1;
+    }
+    .notification-title {
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .notification-time {
+      font-size: 12px;
+      color: #64748b;
+    }
+    .notification-unread {
+      background-color: #f0f9ff;
+    }
+    #mark-all-read {
+      margin-top: 15px;
+      background-color: #f1f5f9;
+      color: #64748b;
+    }
+    #mark-all-read:hover:not(:disabled) {
+      background-color: #e2e8f0;
+    }
+    /* Dark mode support */
+    @media (prefers-color-scheme: dark) {
+      body {
+        background-color: #1e293b;
+        color: #f1f5f9;
+      }
+      .card {
+        background-color: #0f172a;
+        border-color: #334155;
+      }
+      h1 {
+        color: #60a5fa;
+      }
+      input {
+        background-color: #1e293b;
+        border-color: #475569;
+        color: #f1f5f9;
+      }
+      .news-item, .notification-item {
+        border-color: #334155;
+      }
+      .news-location, .filter-btn {
+        background-color: #334155;
+        color: #cbd5e1;
+      }
+      .filter-btn.active {
+        background-color: #3b82f6;
+        color: white;
+      }
+      .notification-unread {
+        background-color: #082f49;
+      }
+      #mark-all-read {
+        background-color: #334155;
+        color: #cbd5e1;
+      }
+      #mark-all-read:hover:not(:disabled) {
+        background-color: #475569;
+      }
+    }
   </style>
 </head>
 <body>
@@ -136,6 +257,51 @@
       <div id="news-container">
         <div class="loading">Loading news...</div>
       </div>
+    </div>
+    
+    <div class="card">
+      <h2>Notifications <span id="notification-count" class="badge">0</span></h2>
+      <div id="notifications-container">
+        <div class="notification-filters">
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="news">News</button>
+          <button class="filter-btn" data-filter="likes">Likes</button>
+          <button class="filter-btn" data-filter="comments">Comments</button>
+        </div>
+        <div id="notification-list">
+          <div class="loading">No notifications yet</div>
+        </div>
+        <button id="mark-all-read" disabled>Mark All as Read</button>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h2>Notification Settings</h2>
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="enable-notifications" checked>
+          Enable all notifications
+        </label>
+      </div>
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="news-notifications" checked>
+          News updates
+        </label>
+      </div>
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="like-notifications" checked>
+          Like notifications
+        </label>
+      </div>
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="comment-notifications" checked>
+          Comment notifications
+        </label>
+      </div>
+      <button id="save-settings">Save Settings</button>
     </div>
   </div>
 
@@ -237,6 +403,336 @@
         day: 'numeric'
       });
     }
+    
+    // WebSocket connection for real-time notifications
+    let socket = null;
+    let notifications = [];
+    let currentFilter = 'all';
+    
+    // Connect to WebSocket server
+    function connectWebSocket() {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      // Use the same host but ensure we're using the /ws path
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      
+      console.log("Connecting to WebSocket at:", wsUrl);
+      socket = new WebSocket(wsUrl);
+      
+      socket.onopen = function() {
+        console.log('WebSocket connection established');
+        document.getElementById('notification-count').textContent = '0';
+        
+        // Send auth message to identify client type
+        socket.send(JSON.stringify({
+          type: 'auth',
+          clientType: 'notifications',
+          userId: localStorage.getItem('userId') || 'anonymous-' + Date.now()
+        }));
+        
+        // Send initial ping
+        socket.send(JSON.stringify({
+          type: 'ping',
+          time: Date.now()
+        }));
+        
+        // Set up ping interval to keep connection alive
+        setInterval(() => {
+          if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+              type: 'ping',
+              time: Date.now()
+            }));
+          }
+        }, 30000); // Send ping every 30 seconds
+      };
+      
+      socket.onmessage = function(event) {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('WebSocket message received:', data);
+          
+          if (data.type === 'notification') {
+            // Add new notification
+            const notification = data.notification;
+            notification.read = false;
+            notification.id = Date.now(); // Temporary ID if not provided
+            
+            // Add to notifications array
+            notifications.unshift(notification);
+            
+            // Update UI
+            updateNotificationCount();
+            renderNotifications();
+            
+            // Show browser notification
+            showBrowserNotification(notification);
+          }
+        } catch (error) {
+          console.error('Error processing WebSocket message:', error);
+        }
+      };
+      
+      socket.onclose = function() {
+        console.log('WebSocket connection closed');
+        // Try to reconnect after 5 seconds
+        setTimeout(connectWebSocket, 5000);
+      };
+      
+      socket.onerror = function(error) {
+        console.error('WebSocket error:', error);
+      };
+    }
+    
+    // Show browser notification
+    function showBrowserNotification(notification) {
+      if (
+        'Notification' in window && 
+        Notification.permission === 'granted' && 
+        document.getElementById('enable-notifications').checked
+      ) {
+        const notif = new Notification('NewsGeo: ' + (notification.title || 'New Notification'), {
+          body: notification.content || 'You have a new notification',
+          icon: '/favicon.ico'
+        });
+        
+        notif.onclick = function() {
+          window.focus();
+          markAsRead(notification.id);
+        };
+      }
+    }
+    
+    // Request notification permission
+    function requestNotificationPermission() {
+      if ('Notification' in window) {
+        if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+          Notification.requestPermission().then(function(permission) {
+            if (permission === 'granted') {
+              console.log('Notification permission granted');
+            }
+          });
+        }
+      }
+    }
+    
+    // Update notification count
+    function updateNotificationCount() {
+      const unreadCount = notifications.filter(n => !n.read).length;
+      document.getElementById('notification-count').textContent = unreadCount;
+      document.getElementById('mark-all-read').disabled = unreadCount === 0;
+    }
+    
+    // Render notifications based on filter
+    function renderNotifications() {
+      const notificationList = document.getElementById('notification-list');
+      
+      const filtered = currentFilter === 'all' 
+        ? notifications 
+        : notifications.filter(n => n.type === currentFilter);
+      
+      if (filtered.length === 0) {
+        notificationList.innerHTML = '<div class="loading">No notifications found</div>';
+        return;
+      }
+      
+      notificationList.innerHTML = '';
+      
+      filtered.forEach(notification => {
+        const notificationItem = document.createElement('div');
+        notificationItem.className = `notification-item ${!notification.read ? 'notification-unread' : ''}`;
+        notificationItem.dataset.id = notification.id;
+        
+        let iconClass = 'info';
+        switch (notification.type) {
+          case 'news':
+            iconClass = 'newspaper';
+            break;
+          case 'likes':
+            iconClass = 'heart';
+            break;
+          case 'comments':
+            iconClass = 'message';
+            break;
+        }
+        
+        notificationItem.innerHTML = `
+          <div class="notification-icon">
+            <i class="icon-${iconClass}">●</i>
+          </div>
+          <div class="notification-content">
+            <div class="notification-title">${notification.title || 'Notification'}</div>
+            <div>${notification.content || ''}</div>
+            <div class="notification-time">${formatDate(notification.time || new Date())}</div>
+          </div>
+        `;
+        
+        notificationItem.addEventListener('click', function() {
+          markAsRead(notification.id);
+        });
+        
+        notificationList.appendChild(notificationItem);
+      });
+    }
+    
+    // Mark notification as read
+    function markAsRead(id) {
+      const index = notifications.findIndex(n => n.id.toString() === id.toString());
+      if (index !== -1) {
+        notifications[index].read = true;
+        
+        // Update UI
+        updateNotificationCount();
+        renderNotifications();
+        
+        // Call API to mark as read
+        fetch(`/api/notifications/${id}/read`, {
+          method: 'POST',
+          credentials: 'include'
+        }).catch(err => console.error('Error marking notification as read:', err));
+      }
+    }
+    
+    // Mark all notifications as read
+    function markAllAsRead() {
+      notifications.forEach(n => n.read = true);
+      
+      // Update UI
+      updateNotificationCount();
+      renderNotifications();
+      
+      // Call API
+      fetch('/api/notifications/read-all', {
+        method: 'POST',
+        credentials: 'include'
+      }).catch(err => console.error('Error marking all notifications as read:', err));
+    }
+    
+    // Setup notification filters
+    function setupNotificationFilters() {
+      const filterButtons = document.querySelectorAll('.filter-btn');
+      
+      filterButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          filterButtons.forEach(btn => btn.classList.remove('active'));
+          this.classList.add('active');
+          
+          currentFilter = this.dataset.filter;
+          renderNotifications();
+        });
+      });
+    }
+    
+    // Save notification settings
+    function saveNotificationSettings() {
+      const enableAll = document.getElementById('enable-notifications').checked;
+      const newsEnabled = document.getElementById('news-notifications').checked;
+      const likesEnabled = document.getElementById('like-notifications').checked;
+      const commentsEnabled = document.getElementById('comment-notifications').checked;
+      
+      const settings = {
+        enableAll,
+        types: {
+          news: newsEnabled,
+          likes: likesEnabled,
+          comments: commentsEnabled
+        }
+      };
+      
+      // Save settings to localStorage
+      localStorage.setItem('notificationSettings', JSON.stringify(settings));
+      
+      // Call API to save settings
+      fetch('/api/user/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          notifications: settings 
+        })
+      })
+      .then(response => {
+        if (response.ok) {
+          alert('Notification settings saved successfully');
+        } else {
+          throw new Error('Failed to save settings');
+        }
+      })
+      .catch(err => {
+        console.error('Error saving notification settings:', err);
+        alert('Failed to save settings: ' + err.message);
+      });
+    }
+    
+    // Load notification settings
+    function loadNotificationSettings() {
+      const settingsStr = localStorage.getItem('notificationSettings');
+      if (settingsStr) {
+        try {
+          const settings = JSON.parse(settingsStr);
+          
+          document.getElementById('enable-notifications').checked = settings.enableAll;
+          document.getElementById('news-notifications').checked = settings.types.news;
+          document.getElementById('like-notifications').checked = settings.types.likes;
+          document.getElementById('comment-notifications').checked = settings.types.comments;
+        } catch (error) {
+          console.error('Error loading notification settings:', error);
+        }
+      }
+    }
+    
+    // Initialize notification functionality
+    function initializeNotifications() {
+      // Request notification permission
+      requestNotificationPermission();
+      
+      // Connect to WebSocket
+      connectWebSocket();
+      
+      // Setup UI elements
+      setupNotificationFilters();
+      
+      // Load notification settings
+      loadNotificationSettings();
+      
+      // Hook up mark all as read button
+      document.getElementById('mark-all-read').addEventListener('click', markAllAsRead);
+      
+      // Hook up save settings button
+      document.getElementById('save-settings').addEventListener('click', saveNotificationSettings);
+      
+      // Initially render empty state
+      renderNotifications();
+      
+      // Fetch notifications from API if authenticated
+      fetch('/api/notifications', {
+        credentials: 'include'
+      })
+      .then(response => {
+        if (response.ok) {
+          return response.json();
+        } else if (response.status === 401) {
+          console.log('Not authenticated, skipping notifications fetch');
+          return { notifications: [] };
+        } else {
+          throw new Error('Failed to fetch notifications');
+        }
+      })
+      .then(data => {
+        if (data.notifications && Array.isArray(data.notifications)) {
+          notifications = data.notifications;
+          updateNotificationCount();
+          renderNotifications();
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching notifications:', error);
+      });
+    }
+    
+    // Initialize when document is loaded
+    document.addEventListener('DOMContentLoaded', initializeNotifications);
   </script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -6,15 +6,22 @@ import {
   ScrollView, 
   TouchableOpacity, 
   Share,
-  Alert
+  Alert,
+  TextInput,
+  Keyboard,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  StatusBar
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import VideoPlayer from '../components/VideoPlayer';
 import LocationBadge from '../components/LocationBadge';
 import { formatRelativeTime } from '../utils/timeUtils';
-import { likeNews, fetchNewsComments } from '../services/api';
+import { likeNews, fetchNewsComments, addNewsComment } from '../services/api';
 import LoadingIndicator from '../components/LoadingIndicator';
 
 export default function NewsDetailScreen() {
@@ -22,10 +29,14 @@ export default function NewsDetailScreen() {
   const navigation = useNavigation();
   const { newsItem } = route.params || {};
   const { user } = useAuth();
+  const { theme, isDarkMode } = useTheme();
   const [liked, setLiked] = useState(newsItem?.liked || false);
   const [likeCount, setLikeCount] = useState(newsItem?.likes || 0);
   const [comments, setComments] = useState([]);
   const [loadingComments, setLoadingComments] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const scrollViewRef = useRef(null);
 
   useEffect(() => {
     if (newsItem?.id) {
@@ -78,80 +89,194 @@ export default function NewsDetailScreen() {
       console.error('Failed to share news:', error);
     }
   };
+  
+  const handleSubmitComment = async () => {
+    if (!commentText.trim()) return;
+    
+    if (!user) {
+      navigation.navigate('Auth');
+      return;
+    }
+
+    try {
+      setSubmittingComment(true);
+      const newComment = await addNewsComment(newsItem.id, commentText.trim());
+      
+      // Add the new comment to the comments array
+      setComments(prevComments => [
+        ...prevComments, 
+        newComment
+      ]);
+      
+      // Clear the input field
+      setCommentText('');
+      
+      // Dismiss keyboard
+      Keyboard.dismiss();
+      
+      // Scroll to bottom to show the new comment
+      if (scrollViewRef.current) {
+        scrollViewRef.current.scrollToEnd({ animated: true });
+      }
+    } catch (error) {
+      console.error('Failed to submit comment:', error);
+      Alert.alert('Error', 'Failed to post your comment. Please try again.');
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
 
   if (!newsItem) {
     return <LoadingIndicator />;
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <VideoPlayer videoUrl={newsItem.videoUrl} thumbnail={newsItem.thumbnail} />
-      
-      <View style={styles.content}>
-        <View style={styles.headerRow}>
-          <LocationBadge location={newsItem.location} />
-          <Text style={styles.timestamp}>{formatRelativeTime(newsItem.publishedAt)}</Text>
-        </View>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1, backgroundColor: theme.background }}
+    >
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
+      <ScrollView 
+        ref={scrollViewRef}
+        style={[styles.container, { backgroundColor: theme.background }]} 
+        contentContainerStyle={styles.contentContainer}
+      >
+        <VideoPlayer videoUrl={newsItem.videoUrl} thumbnail={newsItem.thumbnail} />
         
-        <Text style={styles.title}>{newsItem.title}</Text>
-        <Text style={styles.authorName}>By {newsItem.author}</Text>
-        
-        <View style={styles.actionRow}>
-          <TouchableOpacity 
-            style={[styles.actionButton, liked && styles.likedButton]}
-            onPress={handleLike}
-          >
-            <Feather 
-              name={liked ? "heart" : "heart"} 
-              size={20} 
-              color={liked ? "#EF4444" : "#64748B"} 
-            />
-            <Text style={[styles.actionText, liked && styles.likedText]}>
-              {likeCount} {likeCount === 1 ? 'Like' : 'Likes'}
+        <View style={[styles.content, { backgroundColor: theme.background }]}>
+          <View style={styles.headerRow}>
+            <LocationBadge location={newsItem.location} />
+            <Text style={[styles.timestamp, { color: theme.textSecondary }]}>
+              {formatRelativeTime(newsItem.publishedAt)}
             </Text>
-          </TouchableOpacity>
+          </View>
           
-          <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
-            <Feather name="share-2" size={20} color="#64748B" />
-            <Text style={styles.actionText}>Share</Text>
-          </TouchableOpacity>
-        </View>
-        
-        <View style={styles.divider} />
-        
-        <Text style={styles.description}>{newsItem.description}</Text>
-        
-        <View style={styles.commentsSection}>
-          <Text style={styles.commentsTitle}>Comments</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{newsItem.title}</Text>
+          <Text style={[styles.authorName, { color: theme.textSecondary }]}>
+            By {newsItem.author}
+          </Text>
           
-          {!user ? (
+          <View style={styles.actionRow}>
             <TouchableOpacity 
-              style={styles.loginPrompt}
-              onPress={() => navigation.navigate('Auth')}
+              style={[styles.actionButton, liked && styles.likedButton]}
+              onPress={handleLike}
             >
-              <Text style={styles.loginPromptText}>
-                Please login to view and post comments
+              <Feather 
+                name={liked ? "heart" : "heart"} 
+                size={20} 
+                color={liked ? theme.danger : theme.textSecondary} 
+              />
+              <Text style={[
+                styles.actionText, 
+                { color: theme.textSecondary },
+                liked && [styles.likedText, { color: theme.danger }]
+              ]}>
+                {likeCount} {likeCount === 1 ? 'Like' : 'Likes'}
               </Text>
-              <Feather name="log-in" size={16} color="#2563EB" />
             </TouchableOpacity>
-          ) : loadingComments ? (
-            <LoadingIndicator size="small" />
-          ) : comments.length > 0 ? (
-            comments.map(comment => (
-              <View key={comment.id} style={styles.commentItem}>
-                <View style={styles.commentHeader}>
-                  <Text style={styles.commentAuthor}>{comment.author}</Text>
-                  <Text style={styles.commentTime}>{formatRelativeTime(comment.createdAt)}</Text>
+            
+            <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
+              <Feather name="share-2" size={20} color={theme.textSecondary} />
+              <Text style={[styles.actionText, { color: theme.textSecondary }]}>Share</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
+          
+          <Text style={[styles.description, { color: theme.text }]}>
+            {newsItem.description}
+          </Text>
+          
+          <View style={styles.commentsSection}>
+            <Text style={[styles.commentsTitle, { color: theme.text }]}>Comments</Text>
+            
+            {!user ? (
+              <TouchableOpacity 
+                style={[
+                  styles.loginPrompt,
+                  { backgroundColor: theme.backgroundSecondary }
+                ]}
+                onPress={() => navigation.navigate('Auth')}
+              >
+                <Text style={[styles.loginPromptText, { color: theme.primary }]}>
+                  Please login to view and post comments
+                </Text>
+                <Feather name="log-in" size={16} color={theme.primary} />
+              </TouchableOpacity>
+            ) : loadingComments ? (
+              <LoadingIndicator size="small" />
+            ) : (
+              <>
+                {comments.length > 0 ? (
+                  comments.map(comment => (
+                    <View 
+                      key={comment.id} 
+                      style={[
+                        styles.commentItem,
+                        { backgroundColor: theme.backgroundSecondary }
+                      ]}
+                    >
+                      <View style={styles.commentHeader}>
+                        <Text style={[styles.commentAuthor, { color: theme.text }]}>
+                          {comment.author}
+                        </Text>
+                        <Text style={[styles.commentTime, { color: theme.textSecondary }]}>
+                          {formatRelativeTime(comment.createdAt)}
+                        </Text>
+                      </View>
+                      <Text style={[styles.commentText, { color: theme.text }]}>
+                        {comment.text}
+                      </Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={[styles.noCommentsText, { color: theme.textSecondary }]}>
+                    No comments yet. Be the first to comment!
+                  </Text>
+                )}
+                
+                {/* Comment form */}
+                <View style={[
+                  styles.commentFormContainer,
+                  { 
+                    backgroundColor: theme.backgroundSecondary,
+                    borderColor: theme.border
+                  }
+                ]}>
+                  <TextInput
+                    style={[styles.commentInput, { color: theme.text }]}
+                    placeholder="Add a comment..."
+                    placeholderTextColor={theme.textSecondary}
+                    value={commentText}
+                    onChangeText={setCommentText}
+                    multiline
+                    maxLength={500}
+                  />
+                  <TouchableOpacity
+                    style={[
+                      styles.commentSubmitButton,
+                      { backgroundColor: theme.primary },
+                      (!commentText.trim() || submittingComment) && [
+                        styles.commentSubmitButtonDisabled,
+                        { backgroundColor: theme.textMuted }
+                      ]
+                    ]}
+                    onPress={handleSubmitComment}
+                    disabled={!commentText.trim() || submittingComment}
+                  >
+                    {submittingComment ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Feather name="send" size={20} color="#FFFFFF" />
+                    )}
+                  </TouchableOpacity>
                 </View>
-                <Text style={styles.commentText}>{comment.text}</Text>
-              </View>
-            ))
-          ) : (
-            <Text style={styles.noCommentsText}>No comments yet. Be the first to comment!</Text>
-          )}
+              </>
+            )}
+          </View>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -266,5 +391,36 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#64748B',
     padding: 16,
+  },
+  commentFormContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  commentInput: {
+    flex: 1,
+    minHeight: 40,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: '#1E293B',
+  },
+  commentSubmitButton: {
+    backgroundColor: '#2563EB',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  commentSubmitButtonDisabled: {
+    backgroundColor: '#94A3B8',
+    opacity: 0.6,
   },
 });

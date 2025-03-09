@@ -11,8 +11,27 @@ name = "Project"
 mode = "parallel"
 author = "agent"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "NewsGeo Server"
+
+[[workflows.workflow]]
+name = "NewsGeo Server"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node server/index.js"
+waitForPort = 5000
+
 [deployment]
-run = ["sh", "-c", "node index.js"]
+run = ["sh", "-c", "node server/index.js"]
 
 [[ports]]
 localPort = 5000

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
 
 /**
  * Badge component to display location information
@@ -10,10 +11,16 @@ import { Feather } from '@expo/vector-icons';
  * @param {boolean} props.small - Whether to use small size variant
  */
 export default function LocationBadge({ location, small = false }) {
+  const { theme } = useTheme();
+  
   if (!location) return null;
   
   return (
-    <View style={[styles.container, small && styles.smallContainer]}>
+    <View style={[
+      styles.container, 
+      small && styles.smallContainer, 
+      { backgroundColor: theme.primary }
+    ]}>
       <Feather 
         name="map-pin" 
         size={small ? 10 : 12} 

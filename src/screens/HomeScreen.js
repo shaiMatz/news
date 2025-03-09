@@ -1,19 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Text, RefreshControl } from 'react-native';
+import { View, StyleSheet, Text, RefreshControl, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from '../contexts/LocationContext';
+import { useTheme } from '../contexts/ThemeContext';
 import NewsStream from '../components/NewsStream';
 import PremiumBanner from '../components/PremiumBanner';
 import LocationBadge from '../components/LocationBadge';
 import LoadingIndicator from '../components/LoadingIndicator';
+import ThemeToggle from '../components/ThemeToggle';
 import { fetchNews } from '../services/api';
 import { StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 
 export default function HomeScreen() {
   const { user } = useAuth();
   const { location, locationName } = useLocation();
+  const { theme, isDarkMode } = useTheme();
   const navigation = useNavigation();
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -59,19 +63,44 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.backgroundSecondary }]} edges={['top']}>
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor={theme.background} />
       
-      <View style={styles.header}>
-        <Text style={styles.title}>News Stream</Text>
-        {locationName && <LocationBadge location={locationName} />}
+      <View style={[styles.header, { 
+        backgroundColor: theme.background,
+        borderBottomColor: theme.border
+      }]}>
+        <View style={styles.titleContainer}>
+          <Text style={[styles.title, { color: theme.text }]}>News Stream</Text>
+          {locationName && <LocationBadge location={locationName} />}
+        </View>
+        
+        <View style={styles.headerActions}>
+          {user && (
+            <TouchableOpacity 
+              style={styles.iconButton}
+              onPress={() => navigation.navigate('Notifications')}
+            >
+              <Feather name="bell" size={22} color={theme.textSecondary} />
+            </TouchableOpacity>
+          )}
+          
+          <TouchableOpacity 
+            style={styles.iconButton}
+            onPress={() => navigation.navigate('Search')}
+          >
+            <Feather name="search" size={22} color={theme.textSecondary} />
+          </TouchableOpacity>
+          
+          <ThemeToggle style={styles.themeToggle} />
+        </View>
       </View>
       
       {!user && <PremiumBanner />}
       
       {error ? (
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={[styles.errorText, { color: theme.danger }]}>{error}</Text>
         </View>
       ) : (
         <NewsStream 
@@ -79,7 +108,13 @@ export default function HomeScreen() {
           onNewsPress={handleNewsPress}
           isAuthenticated={!!user}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={handleRefresh} 
+              tintColor={theme.textSecondary}
+              colors={[theme.primary]}
+              progressBackgroundColor={theme.backgroundSecondary}
+            />
           }
         />
       )}
@@ -90,21 +125,36 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+  },
+  titleContainer: {
+    flex: 1,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1E293B',
+    marginBottom: 4,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  themeToggle: {
+    marginLeft: 8,
   },
   errorContainer: {
     flex: 1,
@@ -114,7 +164,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: '#EF4444',
     textAlign: 'center',
   },
 });

@@ -141,6 +141,10 @@ export async function markNotificationAsRead(notificationId) {
   return apiRequest(`/notifications/${notificationId}/read`, 'POST');
 }
 
+export async function markAllNotificationsAsRead() {
+  return apiRequest('/notifications/read-all', 'POST');
+}
+
 // Streaming API
 export async function fetchActiveStreams(locationParams) {
   const queryParams = locationParams 
@@ -162,8 +166,22 @@ export async function endStream(streamId) {
 }
 
 // WebSocket helpers
-export function getWebSocketUrl(newsId) {
+export function getWebSocketUrl(params = {}) {
+  const { newsId, userId, type } = params;
   const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const wsHost = API_URL ? API_URL.replace(/^https?:\/\//, '') : 'localhost:5000';
-  return `${protocol}//${wsHost}/ws${newsId ? `?newsId=${newsId}` : ''}`;
+  
+  // Create URL with query parameters
+  let url = `${protocol}//${wsHost}/ws`;
+  const queryParams = [];
+  
+  if (newsId) queryParams.push(`newsId=${newsId}`);
+  if (userId) queryParams.push(`userId=${userId}`);
+  if (type) queryParams.push(`type=${type}`);
+  
+  if (queryParams.length > 0) {
+    url += `?${queryParams.join('&')}`;
+  }
+  
+  return url;
 }

@@ -3,6 +3,7 @@ import { FlatList, View, Text, StyleSheet, TouchableOpacity } from 'react-native
 import NewsCard from './NewsCard';
 import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 
 /**
@@ -21,6 +22,7 @@ export default function NewsStream({
   refreshControl
 }) {
   const navigation = useNavigation();
+  const { theme } = useTheme();
   const maxFreeContent = 10;
   
   const handleNewsPress = (newsItem) => {
@@ -45,15 +47,27 @@ export default function NewsStream({
   const renderFooter = () => {
     if (!isAuthenticated && news.length > maxFreeContent) {
       return (
-        <View style={styles.loginPromptContainer}>
-          <Text style={styles.loginPromptTitle}>
+        <View style={[
+          styles.loginPromptContainer, 
+          { backgroundColor: theme.cardBackground }
+        ]}>
+          <Text style={[
+            styles.loginPromptTitle,
+            { color: theme.text }
+          ]}>
             Want to see more news?
           </Text>
-          <Text style={styles.loginPromptText}>
+          <Text style={[
+            styles.loginPromptText,
+            { color: theme.textSecondary }
+          ]}>
             Sign up for free to access all content, upload your own news, and more.
           </Text>
           <TouchableOpacity 
-            style={styles.loginButton}
+            style={[
+              styles.loginButton,
+              { backgroundColor: theme.primary }
+            ]}
             onPress={() => navigation.navigate('Auth')}
           >
             <Text style={styles.loginButtonText}>Sign up / Login</Text>
@@ -67,9 +81,21 @@ export default function NewsStream({
 
   const renderEmptyComponent = () => (
     <View style={styles.emptyContainer}>
-      <Feather name="inbox" size={64} color="#E2E8F0" />
-      <Text style={styles.emptyText}>No news available</Text>
-      <Text style={styles.emptySubtext}>
+      <Feather 
+        name="inbox" 
+        size={64} 
+        color={theme.isDark ? theme.border : "#E2E8F0"} 
+      />
+      <Text style={[
+        styles.emptyText,
+        { color: theme.text }
+      ]}>
+        No news available
+      </Text>
+      <Text style={[
+        styles.emptySubtext,
+        { color: theme.textSecondary }
+      ]}>
         Check back later for news updates in your area
       </Text>
     </View>

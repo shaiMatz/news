@@ -9,6 +9,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import LocationBadge from './LocationBadge';
 import { formatRelativeTime } from '../utils/timeUtils';
 
@@ -23,6 +24,7 @@ import { formatRelativeTime } from '../utils/timeUtils';
 export default function NewsCard({ news, compact = false, onPress }) {
   const navigation = useNavigation();
   const { user } = useAuth();
+  const { theme } = useTheme();
   const isPremium = news.premium && !user;
 
   const handlePress = () => {
@@ -35,7 +37,14 @@ export default function NewsCard({ news, compact = false, onPress }) {
 
   return (
     <TouchableOpacity 
-      style={[styles.container, compact && styles.compactContainer]}
+      style={[
+        styles.container, 
+        compact && styles.compactContainer,
+        { 
+          backgroundColor: theme.cardBackground,
+          shadowColor: theme.isDark ? '#000000' : theme.shadow
+        }
+      ]}
       onPress={handlePress}
       disabled={isPremium}
     >
@@ -69,28 +78,38 @@ export default function NewsCard({ news, compact = false, onPress }) {
         </View>
       </ImageBackground>
       
-      <View style={styles.content}>
+      <View style={[styles.content, { backgroundColor: theme.cardBackground }]}>
         <Text 
-          style={[styles.title, compact && styles.compactTitle]}
+          style={[
+            styles.title, 
+            compact && styles.compactTitle,
+            { color: theme.text }
+          ]}
           numberOfLines={compact ? 2 : 3}
         >
           {news.title}
         </Text>
         
         <View style={styles.metaContainer}>
-          <Text style={styles.timestamp}>{formatRelativeTime(news.publishedAt)}</Text>
+          <Text style={[styles.timestamp, { color: theme.textSecondary }]}>
+            {formatRelativeTime(news.publishedAt)}
+          </Text>
           
           <View style={styles.statsContainer}>
             {!compact && (
               <View style={styles.statItem}>
-                <Feather name="eye" size={12} color="#94A3B8" />
-                <Text style={styles.statText}>{news.views || 0}</Text>
+                <Feather name="eye" size={12} color={theme.textSecondary} />
+                <Text style={[styles.statText, { color: theme.textSecondary }]}>
+                  {news.views || 0}
+                </Text>
               </View>
             )}
             
             <View style={styles.statItem}>
-              <Feather name="heart" size={12} color="#94A3B8" />
-              <Text style={styles.statText}>{news.likes || 0}</Text>
+              <Feather name="heart" size={12} color={theme.textSecondary} />
+              <Text style={[styles.statText, { color: theme.textSecondary }]}>
+                {news.likes || 0}
+              </Text>
             </View>
           </View>
         </View>

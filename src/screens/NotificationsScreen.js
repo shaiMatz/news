@@ -1,24 +1,45 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
   FlatList, 
   TouchableOpacity, 
-  RefreshControl 
+  RefreshControl,
+  Alert,
+  Animated,
+  Modal
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { fetchNotifications, markNotificationAsRead } from '../services/api';
-import { formatRelativeTime } from '../utils/timeUtils';
+import { 
+  fetchNotifications, 
+  markNotificationAsRead, 
+  markAllNotificationsAsRead,
+  fetchUserProfile 
+} from '../services/api';
 import LoadingIndicator from '../components/LoadingIndicator';
+import { useTheme } from '../contexts/ThemeContext';
+import NotificationItem from '../components/NotificationItem';
+import NotificationFilter from '../components/NotificationFilter';
+import NotificationSettings from '../components/NotificationSettings';
+import NotificationTester from '../components/NotificationTester';
 
 export default function NotificationsScreen() {
   const [notifications, setNotifications] = useState([]);
+  const [filteredNotifications, setFilteredNotifications] = useState([]);
+  const [selectedFilters, setSelectedFilters] = useState(['all']);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [markingAllAsRead, setMarkingAllAsRead] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [userSettings, setUserSettings] = useState(null);
+  const [headerAnimation] = useState(new Animated.Value(1));
+  
   const navigation = useNavigation();
+  const { theme } = useTheme();
 
+  // Load notifications from the API
   const loadNotifications = async (showRefresh = false) => {
     try {
       if (showRefresh) {
@@ -29,6 +50,7 @@ export default function NotificationsScreen() {
       
       const fetchedNotifications = await fetchNotifications();
       setNotifications(fetchedNotifications);
+      applyFilters(fetchedNotifications, selectedFilters);
     } catch (error) {
       console.error('Failed to load notifications:', error);
     } finally {
@@ -37,16 +59,62 @@ export default function NotificationsScreen() {
     }
   };
 
+  // Load user settings
+  const loadUserSettings = async () => {
+    try {
+      const userProfile = await fetchUserProfile();
+      setUserSettings(userProfile?.settings?.notificationSettings || {});
+    } catch (error) {
+      console.error('Failed to load user settings:', error);
+    }
+  };
+
+  // Initial data loading
   useEffect(() => {
     loadNotifications();
+    loadUserSettings();
   }, []);
 
+  // Apply filters to notifications when selected filters or notifications change
+  const applyFilters = useCallback((notificationsToFilter, filters) => {
+    if (filters.includes('all')) {
+      setFilteredNotifications(notificationsToFilter);
+      return;
+    }
+    
+    const filtered = notificationsToFilter.filter(notification => 
+      filters.includes(notification.type)
+    );
+    
+    setFilteredNotifications(filtered);
+  }, []);
+
+  useEffect(() => {
+    applyFilters(notifications, selectedFilters);
+  }, [selectedFilters, notifications, applyFilters]);
+
+  // Handle refresh
   const handleRefresh = () => {
     loadNotifications(true);
   };
 
+  // Handle notification press
   const handleNotificationPress = async (notification) => {
     try {
+      // Handle action if this is an action-oriented press
+      if (notification.action) {
+        // Handle specific action based on notification type
+        if (notification.actionType === 'follow') {
+          // Navigate to the user profile to follow
+          navigation.navigate('Profile', { userId: notification.referenceId });
+        } else if (notification.actionType === 'event') {
+          // Navigate to an event detail
+          navigation.navigate('EventDetail', { eventId: notification.referenceId });
+        }
+        return;
+      }
+      
+      // Otherwise handle regular notification press
       if (!notification.read) {
         // Mark as read in the UI immediately for better UX
         setNotifications(prevNotifications => 
@@ -62,6 +130,20 @@ export default function NotificationsScreen() {
       // Navigate based on notification type
       if (notification.type === 'news') {
         navigation.navigate('NewsDetail', { newsId: notification.referenceId });
+      } else if (notification.type === 'comment') {
+        navigation.navigate('NewsDetail', { 
+          newsId: notification.referenceId,
+          showComments: true
+        });
+      } else if (notification.type === 'like') {
+        navigation.navigate('NewsDetail', { newsId: notification.referenceId });
+      } else if (notification.type === 'mention') {
+        navigation.navigate('NewsDetail', { 
+          newsId: notification.referenceId,
+          showComments: true
+        });
+      } else if (notification.type === 'stream') {
+        navigation.navigate('StreamDetail', { streamId: notification.referenceId });
       } else if (notification.type === 'profile') {
         navigation.navigate('Profile');
       }
@@ -69,76 +151,184 @@ export default function NotificationsScreen() {
       console.error('Error handling notification:', error);
     }
   };
-
-  const renderNotificationItem = ({ item }) => (
-    <TouchableOpacity 
-      style={[styles.notificationItem, !item.read && styles.unreadNotification]}
-      onPress={() => handleNotificationPress(item)}
-    >
-      <View style={styles.iconContainer}>
-        {getNotificationIcon(item.type)}
-      </View>
+  
+  // Handle marking all notifications as read
+  const handleMarkAllAsRead = async () => {
+    try {
+      setMarkingAllAsRead(true);
       
-      <View style={styles.notificationContent}>
-        <Text style={styles.notificationTitle}>{item.title}</Text>
-        <Text style={styles.notificationMessage}>{item.message}</Text>
-        <Text style={styles.notificationTime}>{formatRelativeTime(item.createdAt)}</Text>
-      </View>
+      // Mark all as read in UI immediately for better UX
+      setNotifications(prevNotifications => 
+        prevNotifications.map(n => ({...n, read: true}))
+      );
       
-      {!item.read && <View style={styles.unreadIndicator} />}
-    </TouchableOpacity>
-  );
-
-  const getNotificationIcon = (type) => {
-    switch (type) {
-      case 'news':
-        return <Feather name="file-text" size={24} color="#2563EB" />;
-      case 'like':
-        return <Feather name="heart" size={24} color="#EF4444" />;
-      case 'comment':
-        return <Feather name="message-circle" size={24} color="#10B981" />;
-      case 'profile':
-        return <Feather name="user" size={24} color="#7C3AED" />;
-      default:
-        return <Feather name="bell" size={24} color="#64748B" />;
+      // Send API request
+      await markAllNotificationsAsRead();
+      
+      // Show success message
+      Alert.alert(
+        "Success",
+        "All notifications have been marked as read.",
+        [{ text: "OK" }]
+      );
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      
+      // Revert UI changes on error
+      loadNotifications();
+      
+      // Show error message
+      Alert.alert(
+        "Error",
+        "Failed to mark all notifications as read. Please try again.",
+        [{ text: "OK" }]
+      );
+    } finally {
+      setMarkingAllAsRead(false);
     }
   };
 
+  // Handle filter change
+  const handleFilterChange = (newFilters) => {
+    setSelectedFilters(newFilters);
+  };
+  
+  // Handle settings save
+  const handleSettingsSave = (newSettings) => {
+    setUserSettings(newSettings);
+    setShowSettings(false);
+  };
+
+  // Render empty state
   const renderEmptyComponent = () => (
-    <View style={styles.emptyContainer}>
-      <Feather name="inbox" size={64} color="#E2E8F0" />
-      <Text style={styles.emptyText}>No notifications yet</Text>
-      <Text style={styles.emptySubtext}>
-        When you receive notifications, they'll appear here
+    <View style={[styles.emptyContainer, { backgroundColor: theme.background }]}>
+      <Feather name="inbox" size={64} color={theme.border} />
+      <Text style={[styles.emptyText, { color: theme.text }]}>No notifications yet</Text>
+      <Text style={[styles.emptySubtext, { color: theme.textSecondary }]}>
+        {selectedFilters.includes('all') 
+          ? "When you receive notifications, they'll appear here"
+          : "No notifications match your current filters"}
       </Text>
+      
+      {!selectedFilters.includes('all') && (
+        <TouchableOpacity
+          style={[styles.resetButton, { backgroundColor: theme.primary }]}
+          onPress={() => setSelectedFilters(['all'])}
+        >
+          <Text style={styles.resetButtonText}>Reset Filters</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
+  // Show loading indicator if loading
   if (loading && !refreshing) {
     return <LoadingIndicator />;
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Notifications</Text>
-        {notifications.length > 0 && (
-          <TouchableOpacity onPress={() => console.log('Mark all as read')}>
-            <Text style={styles.markAllText}>Mark all as read</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      {/* Header */}
+      <Animated.View 
+        style={[
+          styles.header, 
+          { 
+            borderBottomColor: theme.border,
+            transform: [{ scale: headerAnimation }] 
+          }
+        ]}
+      >
+        <View style={styles.headerTop}>
+          <Text style={[styles.title, { color: theme.text }]}>Notifications</Text>
+          <View style={styles.headerActions}>
+            {notifications.length > 0 && (
+              <TouchableOpacity 
+                onPress={handleMarkAllAsRead} 
+                disabled={markingAllAsRead || notifications.every(n => n.read)}
+                style={styles.headerButton}
+              >
+                <Text style={[
+                  styles.markAllText, 
+                  { color: theme.primary },
+                  (markingAllAsRead || notifications.every(n => n.read)) && { opacity: 0.5 }
+                ]}>
+                  {markingAllAsRead ? 'Marking...' : 'Mark all read'}
+                </Text>
+              </TouchableOpacity>
+            )}
+            
+            <TouchableOpacity 
+              style={styles.settingsButton}
+              onPress={() => setShowSettings(true)}
+            >
+              <Feather name="settings" size={20} color={theme.text} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Animated.View>
       
+      {/* Notification Filters */}
+      <NotificationFilter
+        selectedFilters={selectedFilters}
+        onFilterChange={handleFilterChange}
+      />
+      
+      {/* Notification List */}
       <FlatList
-        data={notifications}
-        renderItem={renderNotificationItem}
+        data={filteredNotifications}
+        renderItem={({ item }) => (
+          <NotificationItem 
+            notification={item} 
+            onPress={handleNotificationPress}
+          />
+        )}
         keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={[
+          styles.listContainer, 
+          filteredNotifications.length === 0 && { flex: 1 }
+        ]}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={handleRefresh}
+            tintColor={theme.primary}
+            colors={[theme.primary]}
+          />
         }
         ListEmptyComponent={renderEmptyComponent}
+        onScrollBeginDrag={() => {
+          Animated.timing(headerAnimation, {
+            toValue: 0.98,
+            duration: 200,
+            useNativeDriver: true
+          }).start();
+        }}
+        onScrollEndDrag={() => {
+          Animated.timing(headerAnimation, {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: true
+          }).start();
+        }}
       />
+      
+      {/* Settings Modal */}
+      <Modal
+        visible={showSettings}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowSettings(false)}
+      >
+        <View style={[styles.modalContainer, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
+            <NotificationSettings
+              initialSettings={userSettings}
+              onSave={handleSettingsSave}
+              onClose={() => setShowSettings(false)}
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -149,12 +339,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   header: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   title: {
     fontSize: 20,
@@ -165,52 +361,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#2563EB',
   },
-  listContainer: {
-    flexGrow: 1,
-  },
-  notificationItem: {
-    flexDirection: 'row',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-    alignItems: 'center',
-  },
-  unreadNotification: {
-    backgroundColor: '#F1F5F9',
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#EFF6FF',
-    justifyContent: 'center',
-    alignItems: 'center',
+  headerButton: {
     marginRight: 16,
   },
-  notificationContent: {
-    flex: 1,
+  settingsButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  notificationTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginBottom: 4,
-  },
-  notificationMessage: {
-    fontSize: 14,
-    color: '#334155',
-    marginBottom: 4,
-  },
-  notificationTime: {
-    fontSize: 12,
-    color: '#94A3B8',
-  },
-  unreadIndicator: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#2563EB',
-    marginLeft: 8,
+  listContainer: {
+    flexGrow: 1,
   },
   emptyContainer: {
     flex: 1,
@@ -230,5 +392,27 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     maxWidth: 250,
+  },
+  resetButton: {
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    marginTop: 16,
+  },
+  resetButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    height: '80%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
   },
 });

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   View, 
   Text, 
@@ -12,6 +12,8 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import LocationBadge from './LocationBadge';
+import ShareButton from './ShareButton';
+import ShareSheet from './ShareSheet';
 import { formatRelativeTime } from '../utils/timeUtils';
 
 /**
@@ -32,6 +34,7 @@ export default function NewsCard({
   const navigation = useNavigation();
   const { user } = useAuth();
   const { theme } = useTheme();
+  const [shareSheetVisible, setShareSheetVisible] = useState(false);
   
   // Check if this content requires premium access
   const isPremium = (news.premium || freemiumRestricted) && !user;
@@ -164,6 +167,22 @@ export default function NewsCard({
                 </Text>
               </View>
             )}
+            
+            {/* Share button */}
+            {!isPremium && (
+              <TouchableOpacity 
+                style={styles.statItem} 
+                onPress={() => setShareSheetVisible(true)}
+                accessibilityLabel="Share news"
+              >
+                <Feather name="share-2" size={12} color={theme.textSecondary} />
+                {!compact && (
+                  <Text style={[styles.statText, { color: theme.textSecondary }]}>
+                    Share
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
         </View>
         
@@ -177,6 +196,18 @@ export default function NewsCard({
           </TouchableOpacity>
         )}
       </View>
+      
+      {/* ShareSheet Component */}
+      <ShareSheet
+        visible={shareSheetVisible}
+        onClose={() => setShareSheetVisible(false)}
+        newsItem={news}
+        onShare={(platform) => {
+          console.log(`News shared on ${platform}`);
+          // You could trigger analytics here
+        }}
+        additionalHashtags={news.category ? [news.category] : []}
+      />
     </TouchableOpacity>
   );
 }

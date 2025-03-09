@@ -203,19 +203,19 @@ export async function addNewsComment(newsId, comment) {
 
 // User profile API
 export async function fetchUserProfile() {
-  return apiRequest('/profile');
+  return apiRequest('/user');
 }
 
 export async function updateUserProfile(profileData) {
-  return apiRequest('/profile', 'PUT', profileData);
+  return apiRequest('/user', 'PUT', profileData);
 }
 
 export async function updateUserSettings(settings) {
-  return apiRequest('/profile/settings', 'PUT', settings);
+  return apiRequest('/user/settings', 'PUT', settings);
 }
 
 export async function fetchUserContent() {
-  return apiRequest('/profile/content');
+  return apiRequest('/user/content');
 }
 
 // Notifications API
@@ -257,6 +257,75 @@ export async function createStream(streamData) {
 
 export async function endStream(streamId) {
   return apiRequest(`/streams/${streamId}/end`, 'POST');
+}
+
+// User following API
+/**
+ * Follow a user
+ * 
+ * @param {number} userId - ID of the user to follow
+ * @returns {Promise<Object>} Follow status
+ */
+export async function followUser(userId) {
+  return apiRequest(`/user/follow/${userId}`, 'POST');
+}
+
+/**
+ * Unfollow a user
+ * 
+ * @param {number} userId - ID of the user to unfollow
+ * @returns {Promise<Object>} Unfollow status
+ */
+export async function unfollowUser(userId) {
+  return apiRequest(`/user/follow/${userId}`, 'DELETE');
+}
+
+/**
+ * Get the followers of the current user
+ * 
+ * @returns {Promise<Array>} List of followers
+ */
+export async function fetchFollowers() {
+  return apiRequest('/user/followers');
+}
+
+/**
+ * Get the users the current user is following
+ * 
+ * @returns {Promise<Array>} List of users being followed
+ */
+export async function fetchFollowing() {
+  return apiRequest('/user/following');
+}
+
+/**
+ * Check if the current user is following another user
+ * 
+ * @param {number} userId - ID of the user to check
+ * @returns {Promise<Object>} Object with isFollowing property
+ */
+export async function checkFollowingStatus(userId) {
+  return apiRequest(`/user/following/${userId}`);
+}
+
+/**
+ * Get the news feed from followed users
+ * 
+ * @param {number} limit - Maximum number of items to return
+ * @returns {Promise<Array>} List of news items from followed users
+ */
+export async function fetchFollowingFeed(limit = 20) {
+  return apiRequest(`/user/feed?limit=${limit}`);
+}
+
+/**
+ * Get public profile for a user
+ * 
+ * @param {number} userId - ID of the user
+ * @returns {Promise<Object>} User profile data
+ */
+export async function fetchUserProfileById(userId) {
+  return apiRequest(`/user/profile/${userId}`);
 }
 
 // WebSocket helpers

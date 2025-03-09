@@ -179,6 +179,171 @@ function userRoutes(storage) {
     }
   });
 
+  /**
+   * Follow a user
+   * Protected route - requires authentication
+   */
+  router.post('/follow/:userId', requireAuth, async (req, res, next) => {
+    try {
+      const targetUserId = parseInt(req.params.userId, 10);
+      
+      if (isNaN(targetUserId)) {
+        return res.status(400).json({
+          error: true,
+          message: 'Invalid user ID'
+        });
+      }
+      
+      const result = await storage.followUser(req.user.id, targetUserId);
+      res.json(result);
+    } catch (err) {
+      if (err.message === 'Cannot follow yourself') {
+        return res.status(400).json({
+          error: true,
+          message: err.message
+        });
+      }
+      if (err.message === 'User not found') {
+        return res.status(404).json({
+          error: true,
+          message: err.message
+        });
+      }
+      next(err);
+    }
+  });
+  
+  /**
+   * Unfollow a user
+   * Protected route - requires authentication
+   */
+  router.delete('/follow/:userId', requireAuth, async (req, res, next) => {
+    try {
+      const targetUserId = parseInt(req.params.userId, 10);
+      
+      if (isNaN(targetUserId)) {
+        return res.status(400).json({
+          error: true,
+          message: 'Invalid user ID'
+        });
+      }
+      
+      const result = await storage.unfollowUser(req.user.id, targetUserId);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+  
+  /**
+   * Get user's followers
+   * Protected route - requires authentication
+   */
+  router.get('/followers', requireAuth, async (req, res, next) => {
+    try {
+      const followers = await storage.getFollowers(req.user.id);
+      res.json(followers);
+    } catch (err) {
+      next(err);
+    }
+  });
+  
+  /**
+   * Get users that the current user is following
+   * Protected route - requires authentication
+   */
+  router.get('/following', requireAuth, async (req, res, next) => {
+    try {
+      const following = await storage.getFollowing(req.user.id);
+      res.json(following);
+    } catch (err) {
+      next(err);
+    }
+  });
+  
+  /**
+   * Check if current user is following a specific user
+   * Protected route - requires authentication
+   */
+  router.get('/following/:userId', requireAuth, async (req, res, next) => {
+    try {
+      const targetUserId = parseInt(req.params.userId, 10);
+      
+      if (isNaN(targetUserId)) {
+        return res.status(400).json({
+          error: true,
+          message: 'Invalid user ID'
+        });
+      }
+      
+      const isFollowing = await storage.isFollowing(req.user.id, targetUserId);
+      res.json({ isFollowing });
+    } catch (err) {
+      next(err);
+    }
+  });
+  
+  /**
+   * Get news feed from followed users
+   * Protected route - requires authentication
+   */
+  router.get('/feed', requireAuth, async (req, res, next) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit, 10) : 20;
+      const feed = await storage.getFollowingFeed(req.user.id, limit);
+      res.json(feed);
+    } catch (err) {
+      next(err);
+    }
+  });
+  
+  /**
+   * Get public profile for any user
+   * Public route - does not require authentication
+   */
+  router.get('/profile/:userId', async (req, res, next) => {
+    try {
+      const userId = parseInt(req.params.userId, 10);
+      
+      if (isNaN(userId)) {
+        return res.status(400).json({
+          error: true,
+          message: 'Invalid user ID'
+        });
+      }
+      
+      const user = await storage.getUserById(userId);
+      
+      if (!user) {
+        return res.status(404).json({
+          error: true,
+          message: 'User not found'
+        });
+      }
+      
+      // Prepare public profile data
+      const profile = {
+        id: user.id,
+        username: user.username,
+        joinDate: new Date(user.createdAt).toLocaleDateString(undefined, {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        }),
+        stats: user.stats
+      };
+      
+      // If authenticated, add the follow status
+      if (req.isAuthenticated()) {
+        profile.isFollowing = await storage.isFollowing(req.user.id, userId);
+      }
+      
+      res.json(profile);
+    } catch (err) {
+      next(err);
+    }
+  });
+  
   return router;
 }
 

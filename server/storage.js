@@ -12,6 +12,7 @@ class InMemoryStorage {
     this.news = [];
     this.comments = [];
     this.notifications = [];
+    this.follows = []; // Store following relationships
     this.nextId = {
       users: 1,
       news: 1,
@@ -45,7 +46,9 @@ class InMemoryStorage {
       stats: {
         uploads: 0,
         likes: 0,
-        views: 0
+        views: 0,
+        followers: 0,
+        following: 0
       }
     };
     
@@ -327,6 +330,181 @@ class InMemoryStorage {
       });
     
     return true;
+  }
+  
+  // Following-related methods
+  async followUser(followerId, targetUserId) {
+    // Prevent users from following themselves
+    if (followerId === targetUserId) {
+      throw new Error('Cannot follow yourself');
+    }
+    
+    // Check if both users exist
+    const followerUser = await this.getUserById(followerId);
+    const targetUser = await this.getUserById(targetUserId);
+    
+    if (!followerUser || !targetUser) {
+      throw new Error('User not found');
+    }
+    
+    // Check if already following
+    const existingFollow = this.follows.find(
+      follow => follow.followerId === followerId && follow.targetUserId === targetUserId
+    );
+    
+    if (existingFollow) {
+      // Already following, so we'll return the existing relationship
+      return {
+        followerId,
+        targetUserId,
+        alreadyFollowing: true
+      };
+    }
+    
+    // Create new follow relationship
+    const followRelationship = {
+      followerId,
+      targetUserId,
+      createdAt: new Date()
+    };
+    
+    this.follows.push(followRelationship);
+    
+    // Update stats for both users
+    const followerIndex = this.users.findIndex(user => user.id === followerId);
+    if (followerIndex !== -1) {
+      if (!this.users[followerIndex].stats.following) {
+        this.users[followerIndex].stats.following = 0;
+      }
+      this.users[followerIndex].stats.following++;
+    }
+    
+    const targetIndex = this.users.findIndex(user => user.id === targetUserId);
+    if (targetIndex !== -1) {
+      if (!this.users[targetIndex].stats.followers) {
+        this.users[targetIndex].stats.followers = 0;
+      }
+      this.users[targetIndex].stats.followers++;
+    }
+    
+    // Create notification for the target user
+    this.createNotification({
+      userId: targetUserId,
+      type: 'follow',
+      title: 'New Follower',
+      message: `${followerUser.username} is now following you`,
+      referenceId: followerId,
+      referenceType: 'user'
+    });
+    
+    return {
+      followerId,
+      targetUserId,
+      alreadyFollowing: false
+    };
+  }
+  
+  async unfollowUser(followerId, targetUserId) {
+    // Find the follow relationship
+    const followIndex = this.follows.findIndex(
+      follow => follow.followerId === followerId && follow.targetUserId === targetUserId
+    );
+    
+    if (followIndex === -1) {
+      // Not following, return early
+      return {
+        followerId,
+        targetUserId,
+        wasFollowing: false
+      };
+    }
+    
+    // Remove the follow relationship
+    this.follows.splice(followIndex, 1);
+    
+    // Update stats for both users
+    const followerIndex = this.users.findIndex(user => user.id === followerId);
+    if (followerIndex !== -1 && this.users[followerIndex].stats.following > 0) {
+      this.users[followerIndex].stats.following--;
+    }
+    
+    const targetIndex = this.users.findIndex(user => user.id === targetUserId);
+    if (targetIndex !== -1 && this.users[targetIndex].stats.followers > 0) {
+      this.users[targetIndex].stats.followers--;
+    }
+    
+    return {
+      followerId,
+      targetUserId,
+      wasFollowing: true
+    };
+  }
+  
+  async getFollowers(userId) {
+    const follows = this.follows.filter(follow => follow.targetUserId === userId);
+    
+    // Get the actual follower users with limited data
+    const followers = await Promise.all(
+      follows.map(async follow => {
+        const user = await this.getUserById(follow.followerId);
+        if (!user) return null;
+        
+        const { password, ...userWithoutPassword } = user;
+        return {
+          ...userWithoutPassword,
+          followingSince: follow.createdAt
+        };
+      })
+    );
+    
+    // Filter out nulls (in case a user was deleted)
+    return followers.filter(follower => follower !== null);
+  }
+  
+  async getFollowing(userId) {
+    const follows = this.follows.filter(follow => follow.followerId === userId);
+    
+    // Get the actual users being followed with limited data
+    const following = await Promise.all(
+      follows.map(async follow => {
+        const user = await this.getUserById(follow.targetUserId);
+        if (!user) return null;
+        
+        const { password, ...userWithoutPassword } = user;
+        return {
+          ...userWithoutPassword,
+          followingSince: follow.createdAt
+        };
+      })
+    );
+    
+    // Filter out nulls (in case a user was deleted)
+    return following.filter(followed => followed !== null);
+  }
+  
+  async isFollowing(followerId, targetUserId) {
+    return this.follows.some(
+      follow => follow.followerId === followerId && follow.targetUserId === targetUserId
+    );
+  }
+  
+  async getFollowingFeed(userId, limit = 20) {
+    // Get all users being followed
+    const following = this.follows
+      .filter(follow => follow.followerId === userId)
+      .map(follow => follow.targetUserId);
+    
+    if (following.length === 0) {
+      return [];
+    }
+    
+    // Get news from followed users
+    const followingNews = this.news
+      .filter(news => following.includes(news.authorId))
+      .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+    
+    // Apply limit if specified
+    return limit ? followingNews.slice(0, limit) : followingNews;
   }
 
   // Initialize with some sample data

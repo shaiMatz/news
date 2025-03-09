@@ -9,6 +9,8 @@ import NewsDetailScreen from '../screens/NewsDetailScreen';
 import UploadNewsScreen from '../screens/UploadNewsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import FollowersScreen from '../screens/FollowersScreen';
+import FollowingScreen from '../screens/FollowingScreen';
 import LoadingIndicator from '../components/LoadingIndicator';
 import NotificationBadge from '../components/NotificationBadge';
 import ProtectedRoute from '../components/ProtectedRoute';
@@ -172,19 +174,49 @@ export default function AppNavigator() {
       />
       
       {user && (
-        <Stack.Screen 
-          name="NewsDetail" 
-          component={NewsDetailScreen} 
-          options={{
-            title: '',
-            headerBackTitleVisible: false,
-            headerStyle: {
-              backgroundColor: theme.background,
-              shadowColor: 'transparent',
-            },
-            headerTintColor: theme.primary,
-          }}
-        />
+        <>
+          <Stack.Screen 
+            name="NewsDetail" 
+            component={NewsDetailScreen} 
+            options={{
+              title: '',
+              headerBackTitleVisible: false,
+              headerStyle: {
+                backgroundColor: theme.background,
+                shadowColor: 'transparent',
+              },
+              headerTintColor: theme.primary,
+            }}
+          />
+          
+          <Stack.Screen 
+            name="Followers" 
+            component={FollowersScreen} 
+            options={{
+              title: 'Followers',
+              headerBackTitleVisible: false,
+              headerStyle: {
+                backgroundColor: theme.background,
+                shadowColor: 'transparent',
+              },
+              headerTintColor: theme.primary,
+            }}
+          />
+          
+          <Stack.Screen 
+            name="Following" 
+            component={FollowingScreen} 
+            options={{
+              title: 'Following',
+              headerBackTitleVisible: false,
+              headerStyle: {
+                backgroundColor: theme.background,
+                shadowColor: 'transparent',
+              },
+              headerTintColor: theme.primary,
+            }}
+          />
+        </>
       )}
       
       {!user && (

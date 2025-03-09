@@ -5,7 +5,6 @@ import {
   StyleSheet, 
   ScrollView, 
   TouchableOpacity, 
-  Share,
   Alert,
   TextInput,
   Keyboard,
@@ -20,6 +19,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import VideoPlayer from '../components/VideoPlayer';
 import LocationBadge from '../components/LocationBadge';
+import ShareSheet from '../components/ShareSheet';
 import { formatRelativeTime } from '../utils/timeUtils';
 import { likeNews, fetchNewsComments, addNewsComment } from '../services/api';
 import LoadingIndicator from '../components/LoadingIndicator';
@@ -36,6 +36,7 @@ export default function NewsDetailScreen() {
   const [loadingComments, setLoadingComments] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [shareSheetVisible, setShareSheetVisible] = useState(false);
   const scrollViewRef = useRef(null);
 
   useEffect(() => {
@@ -74,20 +75,14 @@ export default function NewsDetailScreen() {
     }
   };
 
-  const handleShare = async () => {
+  const handleShare = () => {
     if (!user) {
       navigation.navigate('Auth');
       return;
     }
 
-    try {
-      await Share.share({
-        message: `Check out this news: ${newsItem.title} - ${newsItem.shortDescription}`,
-        url: `https://newsgeo.app/news/${newsItem.id}`, // This would be your actual deep link
-      });
-    } catch (error) {
-      console.error('Failed to share news:', error);
-    }
+    // Open our custom ShareSheet
+    setShareSheetVisible(true);
   };
   
   const handleSubmitComment = async () => {
@@ -276,6 +271,19 @@ export default function NewsDetailScreen() {
           </View>
         </View>
       </ScrollView>
+      
+      {/* ShareSheet Component */}
+      <ShareSheet
+        visible={shareSheetVisible}
+        onClose={() => setShareSheetVisible(false)}
+        newsItem={newsItem}
+        onShare={(platform) => {
+          console.log(`News shared on ${platform}`);
+          // You could track analytics here
+          setShareSheetVisible(false);
+        }}
+        additionalHashtags={newsItem.category ? [newsItem.category] : []}
+      />
     </KeyboardAvoidingView>
   );
 }

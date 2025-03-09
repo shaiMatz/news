@@ -9,12 +9,14 @@ import {
   Switch 
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchUserProfile, updateUserSettings, fetchUserContent } from '../services/api';
 import LoadingIndicator from '../components/LoadingIndicator';
 import NewsCard from '../components/NewsCard';
 
 export default function ProfileScreen() {
+  const navigation = useNavigation();
   const { user, logout } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -115,14 +117,20 @@ export default function ProfileScreen() {
           <Text style={styles.statValue}>{profile?.stats?.uploads || 0}</Text>
           <Text style={styles.statLabel}>Uploads</Text>
         </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{profile?.stats?.likes || 0}</Text>
-          <Text style={styles.statLabel}>Likes</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{profile?.stats?.views || 0}</Text>
-          <Text style={styles.statLabel}>Views</Text>
-        </View>
+        <TouchableOpacity 
+          style={styles.statItem}
+          onPress={() => navigation.navigate('Followers')}
+        >
+          <Text style={styles.statValue}>{profile?.stats?.followers || 0}</Text>
+          <Text style={styles.statLabel}>Followers</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.statItem}
+          onPress={() => navigation.navigate('Following')}
+        >
+          <Text style={styles.statValue}>{profile?.stats?.following || 0}</Text>
+          <Text style={styles.statLabel}>Following</Text>
+        </TouchableOpacity>
       </View>
       
       <View style={styles.section}>

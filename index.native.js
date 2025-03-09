@@ -1,8 +1,8 @@
 /**
- * Entry point for the application
+ * Entry point for React Native
  */
 import { registerRootComponent } from 'expo';
 import App from './App';
 
-// Register the App component
+// Register the App component as the main component
 registerRootComponent(App);

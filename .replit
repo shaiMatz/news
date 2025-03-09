@@ -35,7 +35,7 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node server/index.js"
+args = "node start-server.js"
 waitForPort = 5000
 
 [[workflows.workflow]]
@@ -69,7 +69,7 @@ args = "node -e \"const express=require('express');const app=express();app.get('
 waitForPort = 5001
 
 [deployment]
-run = ["sh", "-c", "node server/index.js"]
+run = ["sh", "-c", "node start-server.js"]
 
 [[ports]]
 localPort = 3000
@@ -90,6 +90,10 @@ externalPort = 3001
 [[ports]]
 localPort = 8000
 externalPort = 80
+
+[[ports]]
+localPort = 8080
+externalPort = 8080
 
 [[ports]]
 localPort = 8081

@@ -29,6 +29,7 @@ function createStream(streamData) {
     startedAt: new Date(),
     title: streamData.title,
     metadata: streamData.metadata || {},
+    isAnonymous: !!streamData.isAnonymous, // Track if this is an anonymous broadcast
     comments: [],
     reactions: []
   };
@@ -177,24 +178,43 @@ function getStream(streamId) {
 
 /**
  * Gets streamlined public data for a stream
+ * Handles anonymization if the stream is marked anonymous
  * 
  * @param {Object} stream - Internal stream object
  * @returns {Object} Public stream data
  */
 function getPublicStreamData(stream) {
-  return {
+  // Create the base public stream data
+  const publicData = {
     id: stream.id,
     newsId: stream.newsId,
     status: stream.status,
     startedAt: stream.startedAt,
     endedAt: stream.endedAt,
     title: stream.title,
-    metadata: stream.metadata,
+    metadata: { ...stream.metadata },
     viewerCount: stream.viewers.size,
     broadcastersCount: stream.broadcasters.size,
     commentsCount: stream.comments.length,
-    reactionsCount: stream.reactions.length
+    reactionsCount: stream.reactions.length,
+    isAnonymous: !!stream.isAnonymous
   };
+  
+  // If this is an anonymous stream, adjust the metadata to protect broadcaster identity
+  if (stream.isAnonymous) {
+    // Ensure we don't expose any potential PII in metadata
+    // Remove any broadcaster specific information while keeping broadcast settings
+    const { username, userId, userLocation, profilePic, ...safeMetadata } = publicData.metadata;
+    
+    // Add anonymous indicator
+    publicData.metadata = {
+      ...safeMetadata,
+      broadcasterName: 'Anonymous',
+      anonymousBroadcast: true
+    };
+  }
+  
+  return publicData;
 }
 
 /**

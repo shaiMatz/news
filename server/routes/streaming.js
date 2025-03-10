@@ -82,7 +82,7 @@ function streamingRoutes(storage) {
    */
   router.post('/', authenticate, async (req, res) => {
     try {
-      const { newsId, title, metadata } = req.body;
+      const { newsId, title, metadata, isAnonymous } = req.body;
       
       if (!newsId || !title) {
         return res.status(400).json({
@@ -109,11 +109,20 @@ function streamingRoutes(storage) {
         });
       }
       
+      // Include anonymous flag in stream metadata
+      const updatedMetadata = {
+        ...metadata,
+        isAnonymous: !!isAnonymous
+      };
+      
+      // Still use actual userId for server-side authentication and moderation
+      // The isAnonymous flag will determine how the user is presented to viewers
       const stream = streamingService.createStream({
         newsId: parseInt(newsId),
         userId: req.user.id,
         title,
-        metadata
+        metadata: updatedMetadata,
+        isAnonymous: !!isAnonymous
       });
       
       res.status(201).json(stream);

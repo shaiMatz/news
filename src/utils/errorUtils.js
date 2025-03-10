@@ -13,7 +13,8 @@ export const ErrorTypes = {
   NOT_FOUND: 'NOT_FOUND',    // Resource not found (404)
   TIMEOUT: 'TIMEOUT',        // Request timeouts
   UNKNOWN: 'UNKNOWN',        // Uncategorized errors
-  PERMISSION: 'PERMISSION'   // Permission-related errors
+  PERMISSION: 'PERMISSION',  // Permission-related errors
+  CONFIG: 'CONFIG'           // Configuration or API key errors
 };
 
 /**
@@ -27,6 +28,7 @@ export const ErrorMessages = {
   [ErrorTypes.NOT_FOUND]: 'The requested information could not be found.',
   [ErrorTypes.TIMEOUT]: 'The request took too long to complete. Please try again.',
   [ErrorTypes.PERMISSION]: 'You don\'t have permission to perform this action.',
+  [ErrorTypes.CONFIG]: 'The application is missing required configuration settings.',
   [ErrorTypes.UNKNOWN]: 'An unexpected error occurred. Please try again.'
 };
 

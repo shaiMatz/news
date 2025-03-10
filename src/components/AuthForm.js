@@ -6,7 +6,8 @@ import {
   TouchableOpacity, 
   StyleSheet, 
   ActivityIndicator,
-  Alert
+  Alert,
+  Platform
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
@@ -26,7 +27,7 @@ export default function AuthForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
   const [errorType, setErrorType] = useState(null);
-  const { login, register, loading, error: authError } = useAuth();
+  const { login, register, loading, error: authError, socialLogin } = useAuth();
 
   const toggleForm = () => {
     setIsLogin(!isLogin);
@@ -65,6 +66,37 @@ export default function AuthForm() {
     }
     return true;
   };
+  
+  // Handle social login attempts
+  const handleSocialLogin = async (provider) => {
+    // First clear any previous errors
+    setError(null);
+    setErrorType(null);
+    
+    // Check for connectivity
+    const isConnected = await checkConnectivity();
+    if (!isConnected) return;
+    
+    try {
+      await socialLogin(provider);
+      // If successful, clear any errors
+      setError(null);
+      setErrorType(null);
+    } catch (err) {
+      // Use our error handling utilities
+      const errorMessage = err instanceof ApiError 
+        ? err.getUserMessage()
+        : handleError(err, 'AuthForm');
+      
+      // Set appropriate error type for UI feedback
+      const errType = err instanceof ApiError 
+        ? err.type 
+        : getErrorType(err);
+      
+      setError(errorMessage);
+      setErrorType(errType);
+    }
+  };
 
   const handleSubmit = async () => {
     // First clear any previous errors
@@ -88,14 +120,30 @@ export default function AuthForm() {
       return;
     }
     
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    // Username validation
+    if (!isLogin && !/^[a-zA-Z0-9_-]{3,30}$/.test(username)) {
+      setError('Username must be 3-30 characters and can only contain letters, numbers, underscores and hyphens');
       setErrorType(ErrorTypes.VALIDATION);
       return;
     }
     
-    if (!isLogin && !email.trim()) {
-      setError('Please enter your email address');
+    // Email validation if registering
+    if (!isLogin && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('Please enter a valid email address');
+      setErrorType(ErrorTypes.VALIDATION);
+      return;
+    }
+    
+    // Password validation
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      setErrorType(ErrorTypes.VALIDATION);
+      return;
+    }
+    
+    // Password strength validation for registration
+    if (!isLogin && !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/.test(password)) {
+      setError('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character');
       setErrorType(ErrorTypes.VALIDATION);
       return;
     }
@@ -241,6 +289,31 @@ export default function AuthForm() {
           )}
         </TouchableOpacity>
 
+        <View style={styles.socialLoginContainer}>
+          <Text style={styles.socialLoginText}>Or continue with</Text>
+          <View style={styles.socialButtonsContainer}>
+            <TouchableOpacity
+              style={styles.socialButton}
+              onPress={() => handleSocialLogin('google')}
+              disabled={loading}
+            >
+              <Feather name="mail" size={20} color="#EA4335" />
+              <Text style={styles.socialButtonText}>Google</Text>
+            </TouchableOpacity>
+            
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity
+                style={styles.socialButton}
+                onPress={() => handleSocialLogin('apple')}
+                disabled={loading}
+              >
+                <Feather name="smartphone" size={20} color="#000000" />
+                <Text style={styles.socialButtonText}>Apple</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+        
         <View style={styles.switchFormContainer}>
           <Text style={styles.switchFormText}>
             {isLogin ? "Don't have an account?" : "Already have an account?"}
@@ -356,5 +429,39 @@ const styles = StyleSheet.create({
   switchFormLink: {
     color: '#2563EB',
     fontWeight: 'bold',
+  },
+  socialLoginContainer: {
+    marginTop: 10,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  socialLoginText: {
+    color: '#64748B',
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  socialButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  socialButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginHorizontal: 6,
+    minWidth: 140,
+  },
+  socialButtonText: {
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#334155',
   },
 });

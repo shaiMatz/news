@@ -89,6 +89,18 @@ export default function LiveNewsStream({ newsItem, onClose }) {
       }
     });
     
+    // Handle anonymity status
+    socket.on('stream-status-update', (data) => {
+      if (data.newsId === newsItem.id && data.hasOwnProperty('isAnonymous')) {
+        // Update local state to reflect anonymity status
+        setStreamMetadata(prev => ({
+          ...prev,
+          isAnonymous: data.isAnonymous,
+          anonymousBroadcast: data.isAnonymous
+        }));
+      }
+    });
+    
     // Clean up on unmount
     return () => {
       if (socket) {
@@ -185,11 +197,24 @@ export default function LiveNewsStream({ newsItem, onClose }) {
   const handleSendComment = () => {
     if (!commentText.trim() || !connected || !socketRef.current) return;
     
+    // Check if the stream is in anonymous mode and if the user is the broadcaster
+    const isBroadcaster = newsItem.authorId === user?.id;
+    const isAnonymousStream = streamMetadata?.isAnonymous || streamMetadata?.anonymousBroadcast;
+    
+    // Determine username to display
+    let displayUsername = user ? user.username : 'Anonymous';
+    
+    // If this is an anonymous stream and the user is the broadcaster, use 'Anonymous'
+    if (isAnonymousStream && isBroadcaster) {
+      displayUsername = 'Anonymous (Broadcaster)';
+    }
+    
     // Send the comment via Socket.IO
     socketRef.current.emit('comment', {
       newsId: newsItem.id,
       text: commentText.trim(),
-      username: user ? user.username : 'Anonymous'
+      username: displayUsername,
+      isAnonymous: isAnonymousStream && isBroadcaster
     });
     
     // Clear the input field
@@ -199,11 +224,24 @@ export default function LiveNewsStream({ newsItem, onClose }) {
   const handleSendReaction = (type) => {
     if (!connected || !socketRef.current) return;
     
+    // Check if the stream is in anonymous mode and if the user is the broadcaster
+    const isBroadcaster = newsItem.authorId === user?.id;
+    const isAnonymousStream = streamMetadata?.isAnonymous || streamMetadata?.anonymousBroadcast;
+    
+    // Determine username to display
+    let displayUsername = user ? user.username : 'Anonymous';
+    
+    // If this is an anonymous stream and the user is the broadcaster, use 'Anonymous'
+    if (isAnonymousStream && isBroadcaster) {
+      displayUsername = 'Anonymous (Broadcaster)';
+    }
+    
     // Send the reaction via Socket.IO
     socketRef.current.emit('reaction', {
       newsId: newsItem.id,
       type,
-      username: user ? user.username : 'Anonymous'
+      username: displayUsername,
+      isAnonymous: isAnonymousStream && isBroadcaster
     });
   };
   

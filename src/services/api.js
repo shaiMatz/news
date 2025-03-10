@@ -375,6 +375,16 @@ export async function fetchStreamById(streamId) {
   return apiRequest(`/streams/${streamId}`);
 }
 
+/**
+ * Create a new live stream
+ * 
+ * @param {Object} streamData - Stream data
+ * @param {number} streamData.newsId - ID of the news item
+ * @param {string} streamData.title - Stream title
+ * @param {Object} streamData.metadata - Additional metadata
+ * @param {boolean} streamData.isAnonymous - Whether to hide broadcaster identity
+ * @returns {Promise<Object>} Created stream data
+ */
 export async function createStream(streamData) {
   return apiRequest('/streams', 'POST', streamData);
 }

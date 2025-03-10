@@ -120,14 +120,30 @@ export default function AuthForm() {
       return;
     }
     
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    // Username validation
+    if (!isLogin && !/^[a-zA-Z0-9_-]{3,30}$/.test(username)) {
+      setError('Username must be 3-30 characters and can only contain letters, numbers, underscores and hyphens');
       setErrorType(ErrorTypes.VALIDATION);
       return;
     }
     
-    if (!isLogin && !email.trim()) {
-      setError('Please enter your email address');
+    // Email validation if registering
+    if (!isLogin && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('Please enter a valid email address');
+      setErrorType(ErrorTypes.VALIDATION);
+      return;
+    }
+    
+    // Password validation
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      setErrorType(ErrorTypes.VALIDATION);
+      return;
+    }
+    
+    // Password strength validation for registration
+    if (!isLogin && !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/.test(password)) {
+      setError('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character');
       setErrorType(ErrorTypes.VALIDATION);
       return;
     }

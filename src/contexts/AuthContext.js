@@ -157,6 +157,17 @@ export function AuthProvider({ children }) {
         );
       }
       
+      // Validate username format
+      const usernameRegex = /^[a-zA-Z0-9_-]{3,30}$/;
+      if (!usernameRegex.test(username)) {
+        throw new ApiError(
+          'Invalid username format',
+          0,
+          ErrorTypes.VALIDATION,
+          'Username must be 3-30 characters and can only contain letters, numbers, underscores and hyphens.'
+        );
+      }
+      
       // Validate email format
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
@@ -168,13 +179,24 @@ export function AuthProvider({ children }) {
         );
       }
       
-      // Validate password strength
-      if (password.length < 6) {
+      // Validate password strength according to server requirements
+      if (password.length < 8) {
         throw new ApiError(
           'Password too short',
           0,
           ErrorTypes.VALIDATION,
-          'Password must be at least 6 characters long.'
+          'Password must be at least 8 characters long.'
+        );
+      }
+      
+      // Password must contain at least one uppercase, lowercase, number, and special character
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
+      if (!passwordRegex.test(password)) {
+        throw new ApiError(
+          'Password too weak',
+          0,
+          ErrorTypes.VALIDATION,
+          'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.'
         );
       }
       
@@ -202,10 +224,12 @@ export function AuthProvider({ children }) {
       // Get user-friendly error message
       const userMessage = err.userMessage || getUserFriendlyMessage(err, {
         [ErrorTypes.VALIDATION]: err.message.includes('email') 
-          ? 'Please enter a valid email address.' 
-          : err.message.includes('password')
-            ? 'Please use a stronger password (minimum 6 characters).'
-            : 'Please check your information and try again.',
+          ? 'Please enter a valid email address.'
+          : err.message.includes('username')
+            ? 'Username must be 3-30 characters and can only contain letters, numbers, underscores and hyphens.'
+            : err.message.includes('password')
+              ? 'Password must be at least 8 characters and contain uppercase, lowercase, number, and special character.'
+              : 'Please check your information and try again.',
         [ErrorTypes.CONFLICT]: 'This username or email is already in use. Please try another.',
         [ErrorTypes.NETWORK]: 'Unable to connect. Please check your internet connection.',
         [ErrorTypes.SERVER]: 'Our servers are experiencing issues. Please try again later.'

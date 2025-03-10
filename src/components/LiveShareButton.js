@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity, Text, StyleSheet, Modal, Alert } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Modal, Alert, Switch } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,6 +19,8 @@ export default function LiveShareButton({ floating = false, onPress }) {
   const navigation = useNavigation();
   const [showOptions, setShowOptions] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showLiveOptions, setShowLiveOptions] = useState(false);
+  const [isAnonymousBroadcast, setIsAnonymousBroadcast] = useState(false);
   
   const handlePress = () => {
     if (onPress) {
@@ -42,8 +44,8 @@ export default function LiveShareButton({ floating = false, onPress }) {
         navigation.navigate('Upload');
         break;
       case 'live':
-        // Navigate to live stream creation
-        Alert.alert('Coming Soon', 'Live streaming will be available soon!');
+        // Show live streaming options modal
+        setShowLiveOptions(true);
         break;
       case 'story':
         // Navigate to story creation
@@ -52,6 +54,32 @@ export default function LiveShareButton({ floating = false, onPress }) {
       default:
         break;
     }
+  };
+  
+  const handleStartLiveStream = () => {
+    setShowLiveOptions(false);
+    
+    // In a real implementation, we would navigate to the streaming screen
+    // with the anonymous flag passed as a parameter
+    Alert.alert(
+      'Live Stream',
+      `Starting ${isAnonymousBroadcast ? 'anonymous' : 'public'} live stream...`,
+      [
+        { 
+          text: 'OK', 
+          onPress: () => {
+            // Here we would normally navigate to the streaming screen
+            // For now, we'll just show a placeholder alert
+            setTimeout(() => {
+              Alert.alert(
+                'Live Stream Started',
+                `Your ${isAnonymousBroadcast ? 'anonymous' : 'public'} live stream has begun. Viewers won't ${isAnonymousBroadcast ? '' : 'not '}see your identity.`
+              );
+            }, 1000);
+          }
+        }
+      ]
+    );
   };
   
   return (
@@ -128,6 +156,74 @@ export default function LiveShareButton({ floating = false, onPress }) {
         onClose={() => setShowAuthModal(false)}
         initialTab="login"
       />
+      
+      {/* Live Options Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showLiveOptions}
+        onRequestClose={() => setShowLiveOptions(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowLiveOptions(false)}
+        >
+          <View style={[styles.optionsContainer, { backgroundColor: theme.cardBackground }]}>
+            <View style={styles.liveOptionsHeader}>
+              <Text style={[styles.liveOptionsTitle, { color: theme.text }]}>
+                Go Live
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowLiveOptions(false)}
+                hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+              >
+                <Feather name="x" size={24} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.liveOptionSection}>
+              <View style={styles.anonymousOption}>
+                <View style={styles.anonymousOptionContent}>
+                  <View style={[styles.optionIcon, { backgroundColor: '#f97316' }]}>
+                    <Feather name="user-x" size={20} color="#FFFFFF" />
+                  </View>
+                  <View style={styles.anonymousOptionText}>
+                    <Text style={[styles.optionText, { color: theme.text }]}>
+                      Anonymous Broadcasting
+                    </Text>
+                    <Text style={styles.optionDescription}>
+                      Hide your identity when streaming
+                    </Text>
+                  </View>
+                </View>
+                <Switch
+                  value={isAnonymousBroadcast}
+                  onValueChange={setIsAnonymousBroadcast}
+                  trackColor={{ false: '#767577', true: '#4ade80' }}
+                  thumbColor={isAnonymousBroadcast ? '#22c55e' : '#f4f3f4'}
+                />
+              </View>
+              
+              <Text style={styles.privacyNote}>
+                {isAnonymousBroadcast 
+                  ? "Your identity will be hidden from viewers, but you're still securely logged in for moderation purposes."
+                  : "Your username and profile will be visible to all viewers during the broadcast."}
+              </Text>
+            </View>
+            
+            <TouchableOpacity
+              style={[styles.startLiveButton, { backgroundColor: '#f97316' }]}
+              onPress={handleStartLiveStream}
+            >
+              <Feather name="radio" size={20} color="#FFFFFF" style={styles.startLiveButtonIcon} />
+              <Text style={styles.startLiveButtonText}>
+                Start Broadcasting
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </>
   );
 }
@@ -198,5 +294,65 @@ const styles = StyleSheet.create({
   optionText: {
     fontSize: 16,
     fontWeight: '500',
+  },
+  // Live Options Modal Styles
+  liveOptionsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  liveOptionsTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  liveOptionSection: {
+    marginVertical: 16,
+  },
+  anonymousOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    borderRadius: 8,
+  },
+  anonymousOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 16,
+  },
+  anonymousOptionText: {
+    flex: 1,
+  },
+  optionDescription: {
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 4,
+  },
+  privacyNote: {
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 12,
+    marginHorizontal: 4,
+    lineHeight: 20,
+  },
+  startLiveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  startLiveButtonIcon: {
+    marginRight: 8,
+  },
+  startLiveButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
 });

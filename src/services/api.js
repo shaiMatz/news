@@ -1,4 +1,5 @@
-import { Platform } from 'react-native';
+import { Platform, NetInfo } from 'react-native';
+import { handleError, ErrorTypes, getUserFriendlyMessage } from '../utils/errorUtils';
 
 // Determine if we're running on Replit or locally
 const isReplit = typeof window !== 'undefined' && 
@@ -12,6 +13,61 @@ const API_HOST = isReplit
   : Platform.OS === 'web'
     ? 'http://localhost:8080'
     : 'http:/10.100.102.3:8080'; // Android emulator IP for localhost
+
+// API Error class for better error handling
+import { ErrorTypes, logError, getErrorType, getUserFriendlyMessage } from '../utils/errorUtils';
+
+/**
+ * Custom API error class with enhanced information for error handling
+ */
+export class ApiError extends Error {
+  /**
+   * Create a new API error
+   * 
+   * @param {string} message - Technical error message (for logging)
+   * @param {number} status - HTTP status code (if applicable)
+   * @param {string} type - Error type from ErrorTypes
+   * @param {string} userMessage - User-friendly error message
+   * @param {Object} details - Additional error details
+   */
+  constructor(message, status = 0, type = ErrorTypes.UNKNOWN, userMessage = null, details = {}) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.type = type;
+    this.userMessage = userMessage;
+    this.details = details;
+    this.timestamp = new Date().toISOString();
+    
+    // Capture stack trace for debugging
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, ApiError);
+    }
+  }
+  
+  /**
+   * Get user-friendly description of the error
+   * This is useful for quickly getting a message suitable for display
+   */
+  getUserMessage() {
+    return this.userMessage || this.message;
+  }
+  
+  /**
+   * Convert error to JSON for logging
+   */
+  toJSON() {
+    return {
+      name: this.name,
+      message: this.message,
+      status: this.status,
+      type: this.type,
+      userMessage: this.userMessage,
+      details: this.details,
+      timestamp: this.timestamp
+    };
+  }
+}
 
 export const API_URL = API_HOST;
 const API_BASE_URL = `${API_HOST}/api`;
@@ -81,27 +137,51 @@ async function apiRequest(endpoint, method = 'GET', data = null, customHeaders =
     }
     
     // Handle different status codes
-    if (response.status === 401) {
-      throw new Error('Unauthorized. Please login.');
-    }
-    
-    if (response.status === 403) {
-      throw new Error('Forbidden. You do not have permission to access this resource.');
-    }
-    
-    if (response.status === 429) {
-      throw new Error('Too many requests. Please try again later.');
-    }
-    
     if (!response.ok) {
       let errorMessage;
+      let errorType = ErrorTypes.UNKNOWN;
+      let userMessage = null;
+
       try {
+        // Try to parse error response
         const errorData = await response.json();
         errorMessage = errorData.message || `Request failed with status ${response.status}`;
+        
+        // Use server-provided user message if available
+        if (errorData.userMessage) {
+          userMessage = errorData.userMessage;
+        }
       } catch (e) {
+        // If can't parse JSON, use default message based on status
         errorMessage = `Request failed with status ${response.status}`;
       }
-      throw new Error(errorMessage);
+
+      // Determine error type based on status code
+      if (response.status === 401) {
+        errorType = ErrorTypes.AUTH;
+        errorMessage = 'Unauthorized. Please login.';
+        userMessage = userMessage || 'Please sign in to continue.';
+      } else if (response.status === 403) {
+        errorType = ErrorTypes.PERMISSION;
+        errorMessage = 'Forbidden. You do not have permission to access this resource.';
+        userMessage = userMessage || 'You don\'t have permission to access this resource.';
+      } else if (response.status === 404) {
+        errorType = ErrorTypes.NOT_FOUND;
+        errorMessage = 'Resource not found.';
+        userMessage = userMessage || 'The requested information could not be found.';
+      } else if (response.status === 429) {
+        errorType = ErrorTypes.SERVER;
+        errorMessage = 'Too many requests. Please try again later.';
+        userMessage = userMessage || 'Please slow down and try again in a moment.';
+      } else if (response.status >= 500) {
+        errorType = ErrorTypes.SERVER;
+        userMessage = userMessage || 'Our system is currently experiencing issues. Please try again later.';
+      } else if (response.status >= 400) {
+        errorType = ErrorTypes.VALIDATION;
+        userMessage = userMessage || 'Please check your information and try again.';
+      }
+
+      throw new ApiError(errorMessage, response.status, errorType, userMessage);
     }
     
     // Parse JSON response if it exists
@@ -112,8 +192,37 @@ async function apiRequest(endpoint, method = 'GET', data = null, customHeaders =
     
     return true; // Return true for successful requests with no JSON response
   } catch (error) {
-    console.error(`API error for ${endpoint}:`, error);
-    throw error;
+    // Log the error
+    logError(error, `API request to ${endpoint}`);
+    
+    // If it's a network error, create a proper ApiError
+    if (!error.status && !error.type && 
+        (error.message.includes('Network') || 
+         error.message.includes('fetch') || 
+         error.message.includes('Failed to fetch'))) {
+      throw new ApiError(
+        'Network connection error', 
+        0, 
+        ErrorTypes.NETWORK,
+        'Please check your internet connection and try again.'
+      );
+    }
+    
+    // If it's already an ApiError, just throw it
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    
+    // Otherwise, convert generic errors to ApiError with appropriate type
+    const errorType = getErrorType(error);
+    const userMessage = getUserFriendlyMessage(error);
+    
+    throw new ApiError(
+      error.message || 'An error occurred',
+      error.status || 0,
+      errorType,
+      userMessage
+    );
   }
 }
 
@@ -130,15 +239,21 @@ export async function queryFn({ method = 'GET', on401 = 'throw', retries = 1 }) 
       } catch (error) {
         attempts++;
         
-        // Handle unauthorized errors specially if requested
-        if (error.message.includes('Unauthorized') && on401 === 'returnNull') {
+        // Check error type for more accurate handling
+        const errorType = error.type || getErrorType(error);
+        
+        // Handle auth errors based on option
+        if (errorType === ErrorTypes.AUTH && on401 === 'returnNull') {
           return null;
         }
         
-        // Throw if we're out of retry attempts or error isn't network-related
-        if (attempts > retries || (!error.message.includes('Network') && !error.message.includes('timeout'))) {
+        // Only retry network errors
+        if (attempts > retries || errorType !== ErrorTypes.NETWORK) {
           throw error;
         }
+        
+        // Log retry attempt
+        console.log(`Retrying request (${attempts}/${retries}) after network error: ${endpoint}`);
         
         // Wait with exponential backoff before retrying
         await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempts - 1)));
@@ -224,7 +339,8 @@ export async function fetchNotifications() {
     return await apiRequest('/notifications');
   } catch (error) {
     // Return empty array instead of throwing if the user is not authenticated
-    if (error.message.includes('Unauthorized')) {
+    const errorType = error.type || getErrorType(error);
+    if (errorType === ErrorTypes.AUTH) {
       return [];
     }
     throw error;

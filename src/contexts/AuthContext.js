@@ -4,9 +4,12 @@ import {
   login as apiLogin, 
   register as apiRegister, 
   logout as apiLogout, 
-  getUser 
+  getUser,
+  ApiError
 } from '../services/api';
 import { closeNotificationSocket, setupNotificationSocket } from '../services/notifications';
+import { handleError, ErrorTypes, getUserFriendlyMessage } from '../utils/errorUtils';
+import { isOnline } from '../utils/connectivityUtils';
 
 const AuthContext = createContext();
 
@@ -54,15 +57,36 @@ export function AuthProvider({ children }) {
       setLoading(true);
       setError(null);
       
+      // Check for internet connection first
+      const online = await isOnline();
+      if (!online) {
+        throw new ApiError(
+          'No internet connection',
+          0,
+          ErrorTypes.NETWORK,
+          'Please check your internet connection and try again.'
+        );
+      }
+      
       // Validate input
       if (!username || !password) {
-        throw new Error('Username and password are required');
+        throw new ApiError(
+          'Validation failed',
+          0,
+          ErrorTypes.VALIDATION,
+          'Please enter both username and password.'
+        );
       }
       
       const userData = await apiLogin(username, password);
       
       if (!userData) {
-        throw new Error('Invalid login response');
+        throw new ApiError(
+          'Invalid login response',
+          0,
+          ErrorTypes.SERVER,
+          'We encountered an issue with our servers. Please try again later.'
+        );
       }
       
       setUser(userData);
@@ -72,9 +96,31 @@ export function AuthProvider({ children }) {
       
       return userData;
     } catch (err) {
-      console.error('Login error:', err);
-      setError(err.message || 'Failed to login');
-      throw err;
+      // Log error for debugging
+      handleError(err, 'AuthContext.login');
+      
+      // Get user-friendly error message
+      const userMessage = err.userMessage || getUserFriendlyMessage(err, {
+        [ErrorTypes.AUTH]: 'Invalid username or password. Please try again.',
+        [ErrorTypes.VALIDATION]: 'Please check your username and password and try again.',
+        [ErrorTypes.NETWORK]: 'Unable to connect. Please check your internet connection.',
+        [ErrorTypes.SERVER]: 'Our servers are experiencing issues. Please try again later.'
+      });
+      
+      // Store error for display
+      setError(userMessage);
+      
+      // Throw with user-friendly message attached
+      if (err instanceof ApiError) {
+        throw err;
+      } else {
+        throw new ApiError(
+          err.message || 'Login failed',
+          0,
+          err.type || getErrorType(err),
+          userMessage
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -88,26 +134,57 @@ export function AuthProvider({ children }) {
       setLoading(true);
       setError(null);
       
+      // Check for internet connection first
+      const online = await isOnline();
+      if (!online) {
+        throw new ApiError(
+          'No internet connection',
+          0,
+          ErrorTypes.NETWORK,
+          'Please check your internet connection and try again.'
+        );
+      }
+      
       // Validate input
       if (!username || !email || !password) {
-        throw new Error('Username, email, and password are required');
+        throw new ApiError(
+          'Validation failed',
+          0,
+          ErrorTypes.VALIDATION,
+          'Please fill in all required fields.'
+        );
       }
       
       // Validate email format
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
-        throw new Error('Please enter a valid email address');
+        throw new ApiError(
+          'Invalid email format',
+          0,
+          ErrorTypes.VALIDATION,
+          'Please enter a valid email address.'
+        );
       }
       
       // Validate password strength
       if (password.length < 6) {
-        throw new Error('Password must be at least 6 characters');
+        throw new ApiError(
+          'Password too short',
+          0,
+          ErrorTypes.VALIDATION,
+          'Password must be at least 6 characters long.'
+        );
       }
       
       const userData = await apiRegister(username, email, password);
       
       if (!userData) {
-        throw new Error('Invalid registration response');
+        throw new ApiError(
+          'Invalid registration response',
+          0,
+          ErrorTypes.SERVER,
+          'We encountered an issue with our servers. Please try again later.'
+        );
       }
       
       setUser(userData);
@@ -117,9 +194,35 @@ export function AuthProvider({ children }) {
       
       return userData;
     } catch (err) {
-      console.error('Registration error:', err);
-      setError(err.message || 'Failed to register');
-      throw err;
+      // Log error for debugging
+      handleError(err, 'AuthContext.register');
+      
+      // Get user-friendly error message
+      const userMessage = err.userMessage || getUserFriendlyMessage(err, {
+        [ErrorTypes.VALIDATION]: err.message.includes('email') 
+          ? 'Please enter a valid email address.' 
+          : err.message.includes('password')
+            ? 'Please use a stronger password (minimum 6 characters).'
+            : 'Please check your information and try again.',
+        [ErrorTypes.CONFLICT]: 'This username or email is already in use. Please try another.',
+        [ErrorTypes.NETWORK]: 'Unable to connect. Please check your internet connection.',
+        [ErrorTypes.SERVER]: 'Our servers are experiencing issues. Please try again later.'
+      });
+      
+      // Store error for display
+      setError(userMessage);
+      
+      // Throw with user-friendly message attached
+      if (err instanceof ApiError) {
+        throw err;
+      } else {
+        throw new ApiError(
+          err.message || 'Registration failed',
+          0,
+          err.type || getErrorType(err),
+          userMessage
+        );
+      }
     } finally {
       setLoading(false);
     }

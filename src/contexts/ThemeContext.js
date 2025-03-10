@@ -21,6 +21,12 @@ export const themes = {
     card: '#FFFFFF',
     cardBackground: '#FFFFFF',
     shadow: 'rgba(0, 0, 0, 0.1)',
+    // Error handling specific colors
+    error: '#DC2626',
+    errorBackground: '#FEF2F2',
+    errorBorder: '#FECACA',
+    errorButton: '#EF4444',
+    errorButtonText: '#FFFFFF',
     isDark: false,
   },
   dark: {
@@ -41,6 +47,12 @@ export const themes = {
     card: '#1E293B',
     cardBackground: '#1E293B',
     shadow: 'rgba(0, 0, 0, 0.3)',
+    // Error handling specific colors
+    error: '#F87171',
+    errorBackground: '#341C1C',
+    errorBorder: '#7F1D1D',
+    errorButton: '#B91C1C',
+    errorButtonText: '#FEF2F2',
     isDark: true,
   }
 };

@@ -10,6 +10,10 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import ErrorMessage from './ErrorMessage';
+import { ErrorTypes, handleError } from '../utils/errorUtils';
+import { ApiError } from '../services/api';
+import { isOnline } from '../utils/connectivityUtils';
 
 /**
  * Authentication form component with login and registration functionality
@@ -20,7 +24,9 @@ export default function AuthForm() {
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const { login, register, loading } = useAuth();
+  const [error, setError] = useState(null);
+  const [errorType, setErrorType] = useState(null);
+  const { login, register, loading, error: authError } = useAuth();
 
   const toggleForm = () => {
     setIsLogin(!isLogin);
@@ -28,22 +34,69 @@ export default function AuthForm() {
     setUsername('');
     setPassword('');
     setEmail('');
+    // Clear any existing errors
+    setError(null);
+    setErrorType(null);
+  };
+
+  // Handle form field changes and clear errors
+  const handleUsernameChange = (text) => {
+    setUsername(text);
+    if (error) setError(null); // Clear error when user starts typing
+  };
+
+  const handleEmailChange = (text) => {
+    setEmail(text);
+    if (error) setError(null);
+  };
+
+  const handlePasswordChange = (text) => {
+    setPassword(text);
+    if (error) setError(null);
+  };
+
+  // Check for network connectivity
+  const checkConnectivity = async () => {
+    const online = await isOnline();
+    if (!online) {
+      setError('Please check your internet connection and try again.');
+      setErrorType(ErrorTypes.NETWORK);
+      return false;
+    }
+    return true;
   };
 
   const handleSubmit = async () => {
-    // Basic validation
+    // First clear any previous errors
+    setError(null);
+    setErrorType(null);
+    
+    // Check for connectivity
+    const isConnected = await checkConnectivity();
+    if (!isConnected) return;
+    
+    // Basic validation with proper error feedback
     if (!username.trim()) {
-      Alert.alert('Missing Username', 'Please enter your username');
+      setError('Please enter your username');
+      setErrorType(ErrorTypes.VALIDATION);
       return;
     }
     
-    if (!password.trim() || password.length < 6) {
-      Alert.alert('Invalid Password', 'Password must be at least 6 characters');
+    if (!password.trim()) {
+      setError('Please enter your password');
+      setErrorType(ErrorTypes.VALIDATION);
+      return;
+    }
+    
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      setErrorType(ErrorTypes.VALIDATION);
       return;
     }
     
     if (!isLogin && !email.trim()) {
-      Alert.alert('Missing Email', 'Please enter your email address');
+      setError('Please enter your email address');
+      setErrorType(ErrorTypes.VALIDATION);
       return;
     }
     
@@ -53,14 +106,22 @@ export default function AuthForm() {
       } else {
         await register(username, email, password);
       }
-    } catch (error) {
-      console.error('Auth error:', error);
-      Alert.alert(
-        'Authentication Error', 
-        isLogin 
-          ? 'Login failed. Please check your credentials and try again.' 
-          : 'Registration failed. This username or email may already be in use.'
-      );
+      // If successful, clear any errors
+      setError(null);
+      setErrorType(null);
+    } catch (err) {
+      // Use our error handling utilities
+      const errorMessage = err instanceof ApiError 
+        ? err.getUserMessage()
+        : handleError(err, 'AuthForm');
+      
+      // Set appropriate error type for UI feedback
+      const errType = err instanceof ApiError 
+        ? err.type 
+        : getErrorType(err);
+      
+      setError(errorMessage);
+      setErrorType(errType);
     }
   };
 
@@ -94,11 +155,30 @@ export default function AuthForm() {
               style={styles.input}
               placeholder="Enter your username"
               value={username}
-              onChangeText={setUsername}
+              onChangeText={handleUsernameChange}
               autoCapitalize="none"
             />
           </View>
         </View>
+
+        {error && (
+          <ErrorMessage 
+            message={error}
+            icon={
+              errorType === ErrorTypes.NETWORK ? 'wifi-off' :
+              errorType === ErrorTypes.VALIDATION ? 'alert-circle' :
+              errorType === ErrorTypes.AUTH ? 'lock' : 'alert-triangle'
+            }
+            onRetry={
+              errorType === ErrorTypes.NETWORK ? 
+                () => checkConnectivity().then(isConnected => {
+                  if (isConnected) setError(null);
+                }) : 
+                null
+            }
+            showRetry={errorType === ErrorTypes.NETWORK}
+          />
+        )}
 
         {!isLogin && (
           <View style={styles.inputGroup}>
@@ -109,7 +189,7 @@ export default function AuthForm() {
                 style={styles.input}
                 placeholder="Enter your email"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={handleEmailChange}
                 autoCapitalize="none"
                 keyboardType="email-address"
               />
@@ -125,7 +205,7 @@ export default function AuthForm() {
               style={styles.input}
               placeholder="Enter your password"
               value={password}
-              onChangeText={setPassword}
+              onChangeText={handlePasswordChange}
               secureTextEntry={!showPassword}
             />
             <TouchableOpacity
@@ -186,6 +266,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
     marginTop: 16,
+  },
+  errorContainer: {
+    marginBottom: 16,
   },
   formTypeSelector: {
     flexDirection: 'row',

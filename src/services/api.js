@@ -10,8 +10,8 @@ const isReplit = typeof window !== 'undefined' &&
 const API_HOST = isReplit 
   ? window.location.origin
   : Platform.OS === 'web'
-    ? 'http://localhost:5000'
-    : 'http://10.0.2.2:5000'; // Android emulator IP for localhost
+    ? 'http://localhost:8080'
+    : 'http:/10.100.102.3:8080'; // Android emulator IP for localhost
 
 export const API_URL = API_HOST;
 const API_BASE_URL = `${API_HOST}/api`;

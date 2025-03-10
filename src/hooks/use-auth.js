@@ -7,7 +7,7 @@ import {
 import { useLocation } from "wouter";
 
 // Updated API URL to match our server port
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL = "http://localhost:8080";
 
 // Token storage keys
 const TOKEN_KEY = 'newsgeo_auth_token';

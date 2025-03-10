@@ -100,13 +100,26 @@ function newsRoutes(storage) {
   router.get('/:id', async (req, res, next) => {
     try {
       const newsId = parseInt(req.params.id);
+      if (!newsId || isNaN(newsId)) {
+        return res.status(400).json({
+          error: true,
+          message: 'Invalid news ID'
+        });
+      }
+
       const news = await storage.getNewsById(newsId);
       
       if (!news) {
+        logger.warn('News not found', { id: req.params.id });
         return res.status(404).json({
           error: true,
           message: 'News not found'
         });
+      }
+
+      if (isNaN(newsId)) {
+        logger.warn('Invalid news ID provided', { id: req.params.id });
+        return res.status(400).json({ error: 'Invalid news ID.' });
       }
       
       // Check if user is authenticated
@@ -208,6 +221,12 @@ function newsRoutes(storage) {
   router.post('/:id/like', requireAuth, async (req, res, next) => {
     try {
       const newsId = parseInt(req.params.id);
+      if (!newsId || isNaN(newsId)) {
+        return res.status(400).json({
+          error: true,
+          message: 'Invalid news ID'
+        });
+      }
       const result = await storage.likeNews(newsId, req.user.id);
       
       // Get the news item to get location and check if it was a like or unlike
@@ -236,6 +255,13 @@ function newsRoutes(storage) {
   router.get('/:id/comments', requireAuth, async (req, res, next) => {
     try {
       const newsId = parseInt(req.params.id);
+      if (!newsId || isNaN(newsId)) {
+        return res.status(400).json({
+          error: true,
+          message: 'Invalid news ID'
+        });
+      }
+
       const news = await storage.getNewsById(newsId);
       
       if (!news) {
@@ -260,6 +286,13 @@ function newsRoutes(storage) {
   router.post('/:id/comments', requireAuth, async (req, res, next) => {
     try {
       const newsId = parseInt(req.params.id);
+      if (!newsId || isNaN(newsId)) {
+        return res.status(400).json({
+          error: true,
+          message: 'Invalid news ID'
+        });
+      }
+
       const { text } = req.body;
       
       // Validate required fields
@@ -269,7 +302,7 @@ function newsRoutes(storage) {
           message: 'Comment text is required'
         });
       }
-      
+
       const news = await storage.getNewsById(newsId);
       
       if (!news) {

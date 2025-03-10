@@ -271,6 +271,14 @@ export async function register(username, email, password) {
   return apiRequest('/register', 'POST', { username, email, password });
 }
 
+export async function socialLogin(provider, token) {
+  return apiRequest('/social-login', 'POST', { 
+    provider, 
+    token,
+    device: Platform.OS
+  });
+}
+
 export async function logout() {
   return apiRequest('/logout', 'POST');
 }

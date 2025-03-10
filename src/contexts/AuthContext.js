@@ -1,13 +1,15 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import { 
   login as apiLogin, 
   register as apiRegister, 
   logout as apiLogout, 
+  socialLogin as apiSocialLogin,
   getUser,
   ApiError
 } from '../services/api';
 import { closeNotificationSocket, setupNotificationSocket } from '../services/notifications';
+import { getGoogleAuthToken, getAppleAuthToken } from '../services/socialAuth';
 import { handleError, ErrorTypes, getUserFriendlyMessage } from '../utils/errorUtils';
 import { isOnline } from '../utils/connectivityUtils';
 
@@ -249,6 +251,141 @@ export function AuthProvider({ children }) {
   };
 
   /**
+   * Handle social login through providers like Google or Apple
+   */
+  const socialLogin = async (provider) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Check for internet connection first
+      const online = await isOnline();
+      if (!online) {
+        throw new ApiError(
+          'No internet connection',
+          0,
+          ErrorTypes.NETWORK,
+          'Please check your internet connection and try again.'
+        );
+      }
+      
+      // Validate provider
+      if (!provider || !['google', 'apple'].includes(provider)) {
+        throw new ApiError(
+          'Invalid provider',
+          0,
+          ErrorTypes.VALIDATION,
+          'Authentication provider not supported.'
+        );
+      }
+      
+      // We need to check if we have the required API keys for the social login providers
+      let token;
+      
+      // Check for required environment variables
+      const missingKeys = [];
+      if (provider === 'google') {
+        // Check for Google API keys
+        if (!process.env.GOOGLE_CLIENT_ID) {
+          missingKeys.push('GOOGLE_CLIENT_ID');
+        }
+        if (!process.env.GOOGLE_CLIENT_SECRET) {
+          missingKeys.push('GOOGLE_CLIENT_SECRET');
+        }
+        
+        if (missingKeys.length > 0) {
+          throw new ApiError(
+            `Missing API keys: ${missingKeys.join(', ')}`,
+            0,
+            ErrorTypes.CONFIG,
+            'Google login is not currently available. Please try another login method.'
+          );
+        }
+        
+        // Implementation with actual SDK would go here
+        // This is where we'd use the Google Sign-In SDK to get a token
+        console.log('Using Google credentials:', process.env.GOOGLE_CLIENT_ID);
+        token = await getGoogleAuthToken();
+      } else if (provider === 'apple' && Platform.OS === 'ios') {
+        // Check for Apple API keys
+        if (!process.env.APPLE_CLIENT_ID) {
+          missingKeys.push('APPLE_CLIENT_ID');
+        }
+        if (!process.env.APPLE_TEAM_ID) {
+          missingKeys.push('APPLE_TEAM_ID');
+        }
+        
+        if (missingKeys.length > 0) {
+          throw new ApiError(
+            `Missing API keys: ${missingKeys.join(', ')}`,
+            0,
+            ErrorTypes.CONFIG,
+            'Apple login is not currently available. Please try another login method.'
+          );
+        }
+        
+        // Implementation with actual SDK would go here
+        // This is where we'd use the Apple Sign-In SDK to get a token
+        console.log('Using Apple credentials:', process.env.APPLE_CLIENT_ID);
+        token = await getAppleAuthToken();
+      } else {
+        throw new ApiError(
+          'Provider not supported on this platform',
+          0,
+          ErrorTypes.VALIDATION,
+          'This login method is not available on your device.'
+        );
+      }
+      
+      const userData = await apiSocialLogin(provider, token);
+      
+      if (!userData) {
+        throw new ApiError(
+          'Invalid social login response',
+          0,
+          ErrorTypes.SERVER,
+          'We encountered an issue with our servers. Please try again later.'
+        );
+      }
+      
+      setUser(userData);
+      
+      // Set up notification socket for newly logged in user
+      setupNotificationSocket(userData);
+      
+      return userData;
+    } catch (err) {
+      // Log error for debugging
+      handleError(err, `AuthContext.socialLogin.${provider}`);
+      
+      // Get user-friendly error message
+      const userMessage = err.userMessage || getUserFriendlyMessage(err, {
+        [ErrorTypes.AUTH]: `${provider.charAt(0).toUpperCase() + provider.slice(1)} authentication failed. Please try again.`,
+        [ErrorTypes.VALIDATION]: 'There was a problem with your social login. Please try again.',
+        [ErrorTypes.NETWORK]: 'Unable to connect. Please check your internet connection.',
+        [ErrorTypes.SERVER]: 'Our servers are experiencing issues. Please try again later.'
+      });
+      
+      // Store error for display
+      setError(userMessage);
+      
+      // Throw with user-friendly message attached
+      if (err instanceof ApiError) {
+        throw err;
+      } else {
+        throw new ApiError(
+          err.message || 'Social login failed',
+          0,
+          err.type || getErrorType(err),
+          userMessage
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
    * Update the current user's data (e.g. after profile update)
    */
   const updateUserData = (newUserData) => {
@@ -266,6 +403,7 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
+    socialLogin,
     updateUserData,
     checkLoginStatus
   };

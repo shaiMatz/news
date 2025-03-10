@@ -1,5 +1,5 @@
 import { Platform, NetInfo } from 'react-native';
-import { handleError, ErrorTypes, getUserFriendlyMessage } from '../utils/errorUtils';
+import { ErrorTypes, logError, getErrorType, getUserFriendlyMessage } from '../utils/errorUtils';
 
 // Determine if we're running on Replit or locally
 const isReplit = typeof window !== 'undefined' && 
@@ -14,8 +14,6 @@ const API_HOST = isReplit
     ? 'http://localhost:8080'
     : 'http:/10.100.102.3:8080'; // Android emulator IP for localhost
 
-// API Error class for better error handling
-import { ErrorTypes, logError, getErrorType, getUserFriendlyMessage } from '../utils/errorUtils';
 
 /**
  * Custom API error class with enhanced information for error handling

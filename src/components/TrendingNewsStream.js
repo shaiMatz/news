@@ -68,9 +68,10 @@ export default function TrendingNewsStream({
       if (region) {
         queryParams.append('region', region);
       }
-      
+          
+      const url = `${API_URL}/api/news/realtime-trending?${queryParams.toString()}`;
       // Fetch from API
-      const response = await fetch(`${API_URL}/api/realtime-trending?${queryParams.toString()}`, {
+      const response = await fetch(url, {
         credentials: 'include'
       });
       

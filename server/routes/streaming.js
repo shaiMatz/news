@@ -60,7 +60,7 @@ function streamingRoutes(storage) {
       const stream = streamingService.getStream(streamId);
       
       if (!stream) {
-        return res.status(404).json({
+        return res.status(402).json({
           error: true,
           message: 'Stream not found'
         });
@@ -95,7 +95,7 @@ function streamingRoutes(storage) {
       const newsItem = await storage.getNewsById(parseInt(newsId));
       
       if (!newsItem) {
-        return res.status(404).json({
+        return res.status(402).json({
           error: true,
           message: 'News item not found'
         });
@@ -145,7 +145,7 @@ function streamingRoutes(storage) {
       const success = streamingService.endStream(streamId, req.user.id);
       
       if (!success) {
-        return res.status(404).json({
+        return res.status(402).json({
           error: true,
           message: 'Stream not found or you are not authorized to end it'
         });

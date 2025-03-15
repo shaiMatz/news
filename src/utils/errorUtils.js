@@ -100,8 +100,8 @@ export function getErrorType(error) {
   
   // Check for not found errors
   if (
-    error.status === 404 || 
-    error.statusCode === 404 ||
+    error.status === 402 || 
+    error.statusCode === 402 ||
     error.message?.includes('not found') ||
     error.code === 'NOT_FOUND_ERROR'
   ) {

@@ -1,5 +1,5 @@
 // Simple authentication form
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   const root = document.getElementById('root');
   const API_URL = ''; // Empty string to use relative URLs
 
@@ -21,20 +21,20 @@ document.addEventListener('DOMContentLoaded', function() {
       'Content-Type': 'application/json',
     },
   })
-  .then(response => {
-    if (response.ok) {
-      return response.json();
-    }
-    throw new Error('Not authenticated');
-  })
-  .then(user => {
-    // User is logged in, show home page
-    renderHomePage(container, user);
-  })
-  .catch(error => {
-    // User is not logged in, show auth page
-    renderAuthPage(container);
-  });
+    .then(response => {
+      if (response.ok) {
+        return response.json();
+      }
+      throw new Error('Not authenticated');
+    })
+    .then(user => {
+      // User is logged in, show home page
+      renderHomePage(container, user);
+    })
+    .catch(error => {
+      // User is not logged in, show auth page
+      renderAuthPage(container);
+    });
 
   root.appendChild(container);
 });
@@ -63,17 +63,17 @@ function renderHomePage(container, user) {
   `;
 
   // Add logout functionality
-  document.getElementById('logout-button').addEventListener('click', function() {
+  document.getElementById('logout-button').addEventListener('click', function () {
     fetch('/api/logout', {
       method: 'POST',
       credentials: 'include',
     })
-    .then(() => {
-      window.location.reload();
-    })
-    .catch(error => {
-      console.error('Logout failed:', error);
-    });
+      .then(() => {
+        window.location.reload();
+      })
+      .catch(error => {
+        console.error('Logout failed:', error);
+      });
   });
 }
 
@@ -130,7 +130,7 @@ function renderAuthPage(container) {
       </div>
     </div>
   `;
-  
+
   // Show hero section on larger screens
   if (window.innerWidth >= 768) {
     document.querySelector('.hero-section').style.display = 'flex';
@@ -143,11 +143,11 @@ function renderAuthPage(container) {
   const authButtonText = document.getElementById('auth-button-text');
   const emailField = document.getElementById('email-field');
   const errorMessage = document.getElementById('error-message');
-  
+
   // Toggle between login and register
-  toggleAuthButton.addEventListener('click', function() {
+  toggleAuthButton.addEventListener('click', function () {
     isLogin = !isLogin;
-    
+
     if (isLogin) {
       authTitle.textContent = 'Login to Your Account';
       authButtonText.textContent = 'Login';
@@ -159,25 +159,25 @@ function renderAuthPage(container) {
       toggleAuthButton.textContent = 'Already have an account? Login';
       emailField.style.display = 'block';
     }
-    
+
     errorMessage.textContent = '';
   });
-  
+
   // Handle form submission
-  authForm.addEventListener('submit', function(e) {
+  authForm.addEventListener('submit', function (e) {
     e.preventDefault();
-    
+
     const formData = {
       username: document.getElementById('username').value,
       password: document.getElementById('password').value,
     };
-    
+
     if (!isLogin) {
       formData.email = document.getElementById('email').value;
     }
-    
+
     const endpoint = isLogin ? '/api/login' : '/api/register';
-    
+
     fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -186,20 +186,20 @@ function renderAuthPage(container) {
       credentials: 'include',
       body: JSON.stringify(formData),
     })
-    .then(response => {
-      if (!response.ok) {
-        return response.json().then(data => {
-          throw new Error(data.message || 'Authentication failed');
-        });
-      }
-      return response.json();
-    })
-    .then(data => {
-      // Successful login or registration
-      window.location.reload();
-    })
-    .catch(error => {
-      errorMessage.textContent = error.message;
-    });
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(data => {
+            throw new Error(data.message || 'Authentication failed');
+          });
+        }
+        return response.json();
+      })
+      .then(data => {
+        // Successful login or registration
+        window.location.reload();
+      })
+      .catch(error => {
+        errorMessage.textContent = error.message;
+      });
   });
 }

@@ -10,7 +10,7 @@ const isReplit = typeof window !== 'undefined' &&
 // Base URL for API requests
 const API_HOST = isReplit 
   ? window.location.origin
-  : Platform.OS === 'web'
+  : Platform.OS !== 'android'
     ? 'http://localhost:8080'
     : 'http:/10.100.102.3:8080'; // Android emulator IP for localhost
 
@@ -163,7 +163,7 @@ async function apiRequest(endpoint, method = 'GET', data = null, customHeaders =
         errorType = ErrorTypes.PERMISSION;
         errorMessage = 'Forbidden. You do not have permission to access this resource.';
         userMessage = userMessage || 'You don\'t have permission to access this resource.';
-      } else if (response.status === 404) {
+      } else if (response.status === 402) {
         errorType = ErrorTypes.NOT_FOUND;
         errorMessage = 'Resource not found.';
         userMessage = userMessage || 'The requested information could not be found.';
@@ -287,6 +287,7 @@ export async function getUser() {
 
 // News API
 export async function fetchNews(locationParams, limit) {
+  console.log('fetchNews', locationParams, limit);
   let queryParams = [];
   
   if (locationParams) {
@@ -299,10 +300,12 @@ export async function fetchNews(locationParams, limit) {
   }
   
   const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
-  return apiRequest(`/news${queryString}`);
+  console.log('fetchNews', queryString);
+  return apiRequest(`/news/${queryString}`);
 }
 
 export async function fetchNewsById(newsId) {
+  console.log('fetchNewsById', newsId);
   return apiRequest(`/news/${newsId}`);
 }
 

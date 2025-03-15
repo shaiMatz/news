@@ -31,7 +31,7 @@ function userRoutes(storage) {
       const user = await storage.getUserById(req.user.id);
       
       if (!user) {
-        return res.status(404).json({
+        return res.status(402).json({
           error: true,
           message: 'User not found'
         });
@@ -188,7 +188,7 @@ function userRoutes(storage) {
       const targetUserId = parseInt(req.params.userId, 10);
       
       if (isNaN(targetUserId)) {
-        return res.status(400).json({
+        return res.status(402).json({
           error: true,
           message: 'Invalid user ID'
         });
@@ -204,7 +204,7 @@ function userRoutes(storage) {
         });
       }
       if (err.message === 'User not found') {
-        return res.status(404).json({
+        return res.status(402).json({
           error: true,
           message: err.message
         });
@@ -222,7 +222,7 @@ function userRoutes(storage) {
       const targetUserId = parseInt(req.params.userId, 10);
       
       if (isNaN(targetUserId)) {
-        return res.status(400).json({
+        return res.status(402).json({
           error: true,
           message: 'Invalid user ID'
         });
@@ -270,7 +270,7 @@ function userRoutes(storage) {
       const targetUserId = parseInt(req.params.userId, 10);
       
       if (isNaN(targetUserId)) {
-        return res.status(400).json({
+        return res.status(402).json({
           error: true,
           message: 'Invalid user ID'
         });
@@ -315,7 +315,7 @@ function userRoutes(storage) {
       const user = await storage.getUserById(userId);
       
       if (!user) {
-        return res.status(404).json({
+        return res.status(402).json({
           error: true,
           message: 'User not found'
         });

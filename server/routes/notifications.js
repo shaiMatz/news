@@ -51,7 +51,7 @@ function notificationsRoutes(storage, utils = {}) {
       const notification = notifications.find(n => n.id === notificationId);
       
       if (!notification) {
-        return res.status(404).json({
+        return res.status(402).json({
           error: true,
           message: 'Notification not found or does not belong to the current user'
         });

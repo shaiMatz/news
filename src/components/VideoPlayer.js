@@ -3,6 +3,8 @@ import { View, StyleSheet, TouchableOpacity, ActivityIndicator, Image, Text } fr
 import { Feather } from '@expo/vector-icons';
 import { Video } from 'expo-av';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLocalizationContext } from '../contexts/LocalizationContext';
+import useLocalization from '../hooks/useLocalization';
 
 /**
  * Custom video player component
@@ -13,6 +15,8 @@ import { useTheme } from '../contexts/ThemeContext';
  */
 export default function VideoPlayer({ videoUrl, thumbnail }) {
   const { theme } = useTheme();
+  const { isRTL } = useLocalizationContext();
+  const { t } = useLocalization();
   const [status, setStatus] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -54,6 +58,49 @@ export default function VideoPlayer({ videoUrl, thumbnail }) {
     }
   };
 
+  // Helper function for RTL-aware styling
+  const getDirectionStyle = () => {
+    return isRTL
+      ? { flexDirection: 'row-reverse' }
+      : { flexDirection: 'row' };
+  };
+
+  // Helper function for text alignment
+  const getTextAlignStyle = () => {
+    return { textAlign: isRTL ? 'right' : 'left' };
+  };
+
+  // Get play button style adjusted for RTL
+  const getPlayButtonStyle = () => {
+    const base = {
+      position: 'absolute',
+      top: '50%',
+      width: 48,
+      height: 48,
+      marginTop: -24,
+      borderRadius: 24,
+      backgroundColor: theme.primary + 'CC',
+      justifyContent: 'center',
+      alignItems: 'center',
+    };
+    
+    // For RTL layouts, position from the right
+    if (isRTL) {
+      return {
+        ...base,
+        right: '50%',
+        marginRight: -24
+      };
+    }
+    
+    // For LTR layouts, position from the left
+    return {
+      ...base,
+      left: '50%',
+      marginLeft: -24
+    };
+  };
+
   return (
     <View style={styles.container}>
       {showThumbnail ? (
@@ -77,8 +124,12 @@ export default function VideoPlayer({ videoUrl, thumbnail }) {
       {error && (
         <View style={styles.errorContainer}>
           <Feather name="alert-circle" size={24} color={theme.danger} />
-          <Text style={[styles.errorText, { color: theme.isDark ? '#FFFFFF' : '#FFFFFF' }]}>
-            Failed to load video
+          <Text style={[
+            styles.errorText, 
+            getTextAlignStyle(),
+            { color: '#FFFFFF' }
+          ]}>
+            {t('streaming.errorLoadingStream')}
           </Text>
         </View>
       )}
@@ -89,14 +140,14 @@ export default function VideoPlayer({ videoUrl, thumbnail }) {
           { backgroundColor: theme.isDark ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.3)' }
         ]}>
           <ActivityIndicator size="large" color="#FFFFFF" />
+          <Text style={[styles.loadingText, getTextAlignStyle()]}>
+            {t('streaming.buffering')}
+          </Text>
         </View>
       )}
       
       <TouchableOpacity
-        style={[
-          styles.playPauseButton,
-          { backgroundColor: theme.primary + 'CC' }  // Add some transparency
-        ]}
+        style={getPlayButtonStyle()}
         onPress={handlePlayPause}
       >
         <Feather 
@@ -106,16 +157,26 @@ export default function VideoPlayer({ videoUrl, thumbnail }) {
         />
       </TouchableOpacity>
       
-      <View style={styles.controlsOverlay}>
+      <View style={[
+        styles.controlsOverlay,
+        isRTL 
+          ? { left: 0, right: undefined, flexDirection: 'row-reverse' } 
+          : { right: 0, left: undefined }
+      ]}>
         {!showThumbnail && !loading && (
           <>
             <TouchableOpacity 
               style={[
                 styles.controlButton,
-                { backgroundColor: theme.primary + 'CC' }
+                { backgroundColor: theme.primary + 'CC' },
+                isRTL ? { marginLeft: 0, marginRight: 8 } : { marginLeft: 8 }
               ]}
             >
-              <Feather name="volume-2" size={20} color="#FFFFFF" />
+              <Feather 
+                name="volume-2" 
+                size={20} 
+                color="#FFFFFF" 
+              />
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -124,7 +185,11 @@ export default function VideoPlayer({ videoUrl, thumbnail }) {
                 { backgroundColor: theme.primary + 'CC' }
               ]}
             >
-              <Feather name="maximize" size={20} color="#FFFFFF" />
+              <Feather 
+                name="maximize" 
+                size={20} 
+                color="#FFFFFF" 
+              />
             </TouchableOpacity>
           </>
         )}
@@ -148,23 +213,12 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  playPauseButton: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    marginLeft: -24,
-    marginTop: -24,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  // playPauseButton style is now handled by getPlayButtonStyle() function
+  // to properly support RTL layouts
   controlsOverlay: {
     position: 'absolute',
     bottom: 0,
-    right: 0,
+    // right/left positioning is handled in the component's return
     flexDirection: 'row',
     padding: 16,
   },
@@ -175,13 +229,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 8,
+    // marginLeft is now handled conditionally in the component
   },
   loadingContainer: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  loadingText: {
+    color: '#FFFFFF',
+    marginTop: 12,
+    fontSize: 14,
   },
   errorContainer: {
     ...StyleSheet.absoluteFillObject,
@@ -192,6 +251,8 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#FFFFFF',
     marginTop: 8,
+    marginBottom: 16,
     fontSize: 14,
+    paddingHorizontal: 20,
   },
 });

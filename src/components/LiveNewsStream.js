@@ -1,12 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Platform, Image } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import io from 'socket.io-client';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL, getWebSocketUrl } from '../services/api';
-import VideoPlayer from './VideoPlayer';
+import LiveStreamPlayer from './LiveStreamPlayer';
 import LoadingIndicator from './LoadingIndicator';
 import LocationBadge from './LocationBadge';
+import { useLocalizationContext } from '../contexts/LocalizationContext';
+import useLocalization from '../hooks/useLocalization';
 
 /**
  * LiveNewsStream component for displaying and interacting with live news streams
@@ -17,12 +19,15 @@ import LocationBadge from './LocationBadge';
  */
 export default function LiveNewsStream({ newsItem, onClose }) {
   const { user } = useAuth();
+  const { t } = useLocalization();
+  const { isRTL, getDirectionStyle, getTextAlignStyle } = useLocalizationContext();
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
   const [viewerCount, setViewerCount] = useState(0);
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState('');
   const [streamMetadata, setStreamMetadata] = useState({});
+  const [streamError, setStreamError] = useState(null);
   const socketRef = useRef(null);
   const wsRef = useRef(null);
   const commentsRef = useRef(null);
@@ -256,9 +261,9 @@ export default function LiveNewsStream({ newsItem, onClose }) {
   return (
     <View style={styles.container}>
       {/* Stream header */}
-      <View style={styles.header}>
+      <View style={[styles.header, getDirectionStyle()]}>
         <View style={styles.headerLeft}>
-          <Text style={styles.title} numberOfLines={1}>
+          <Text style={[styles.title, getTextAlignStyle()]} numberOfLines={1}>
             {newsItem.title}
           </Text>
           {newsItem.location && (
@@ -266,9 +271,12 @@ export default function LiveNewsStream({ newsItem, onClose }) {
           )}
         </View>
         <View style={styles.headerRight}>
-          <View style={styles.viewerCount}>
+          <View style={[styles.viewerCount, getDirectionStyle()]}>
             <Feather name="eye" size={16} color="#64748B" />
-            <Text style={styles.viewerCountText}>{viewerCount}</Text>
+            <Text style={[
+              styles.viewerCountText, 
+              isRTL ? { marginRight: 4, marginLeft: 0 } : { marginLeft: 4 }
+            ]}>{viewerCount}</Text>
           </View>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <Feather name="x" size={24} color="#1E293B" />
@@ -279,13 +287,19 @@ export default function LiveNewsStream({ newsItem, onClose }) {
       {/* Stream content */}
       <View style={styles.content}>
         {newsItem.isVideoContent ? (
-          <VideoPlayer 
-            videoUrl={newsItem.videoUrl} 
-            thumbnail={newsItem.thumbnail} 
+          <LiveStreamPlayer 
+            streamUrl={newsItem.videoUrl} 
+            streamId={newsItem.id}
+            thumbnail={newsItem.thumbnail}
+            isLive={true}
+            onError={(error) => {
+              console.error('Stream error:', error);
+              setStreamError(error);
+            }}
           />
         ) : (
           <View style={styles.textContent}>
-            <Text style={styles.description}>{newsItem.description}</Text>
+            <Text style={[styles.description, getTextAlignStyle()]}>{newsItem.description}</Text>
             {newsItem.imageUrl && (
               <Image 
                 source={{ uri: newsItem.imageUrl }} 
@@ -299,7 +313,7 @@ export default function LiveNewsStream({ newsItem, onClose }) {
       
       {/* Comments section */}
       <View style={styles.commentsContainer}>
-        <Text style={styles.commentsTitle}>Live Comments</Text>
+        <Text style={[styles.commentsTitle, getTextAlignStyle()]}>{t('streaming.liveComments')}</Text>
         
         <ScrollView 
           ref={commentsRef}
@@ -307,15 +321,18 @@ export default function LiveNewsStream({ newsItem, onClose }) {
           contentContainerStyle={styles.commentsListContent}
         >
           {comments.length === 0 ? (
-            <Text style={styles.noCommentsText}>
-              No comments yet. Be the first to comment!
+            <Text style={[styles.noCommentsText, getTextAlignStyle()]}>
+              {t('streaming.noComments')}
             </Text>
           ) : (
             comments.map(comment => (
               <View key={comment.id} style={styles.commentItem}>
-                <Text style={styles.commentUsername}>{comment.username}</Text>
-                <Text style={styles.commentText}>{comment.text}</Text>
-                <Text style={styles.commentTime}>
+                <Text style={[styles.commentUsername, getTextAlignStyle()]}>{comment.username}</Text>
+                <Text style={[styles.commentText, getTextAlignStyle()]}>{comment.text}</Text>
+                <Text style={[
+                  styles.commentTime, 
+                  isRTL ? { alignSelf: 'flex-start' } : { alignSelf: 'flex-end' }
+                ]}>
                   {new Date(comment.timestamp).toLocaleTimeString([], { 
                     hour: '2-digit', 
                     minute: '2-digit' 
@@ -328,14 +345,15 @@ export default function LiveNewsStream({ newsItem, onClose }) {
         
         {/* Comment input */}
         {user ? (
-          <View style={styles.commentInputContainer}>
+          <View style={[styles.commentInputContainer, getDirectionStyle()]}>
             <TextInput
-              style={styles.commentInput}
-              placeholder="Add a comment..."
+              style={[styles.commentInput, getTextAlignStyle()]}
+              placeholder={t('streaming.addComment')}
               value={commentText}
               onChangeText={setCommentText}
               multiline={Platform.OS === 'ios'}
               maxLength={200}
+              textAlign={isRTL ? 'right' : 'left'}
             />
             <TouchableOpacity 
               style={[
@@ -346,7 +364,7 @@ export default function LiveNewsStream({ newsItem, onClose }) {
               disabled={!commentText.trim()}
             >
               <Feather 
-                name="send" 
+                name={isRTL ? "arrow-left" : "send"} 
                 size={20} 
                 color={commentText.trim() ? "#FFFFFF" : "#A1A1AA"} 
               />
@@ -354,14 +372,14 @@ export default function LiveNewsStream({ newsItem, onClose }) {
           </View>
         ) : (
           <TouchableOpacity style={styles.loginPrompt}>
-            <Text style={styles.loginPromptText}>
-              Login to join the conversation
+            <Text style={[styles.loginPromptText, getTextAlignStyle()]}>
+              {t('streaming.loginToComment')}
             </Text>
           </TouchableOpacity>
         )}
         
         {/* Reaction buttons */}
-        <View style={styles.reactionsContainer}>
+        <View style={[styles.reactionsContainer, getDirectionStyle()]}>
           <TouchableOpacity 
             style={styles.reactionButton}
             onPress={() => handleSendReaction('like')}

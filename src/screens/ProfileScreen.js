@@ -10,14 +10,19 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
+import { useLocalizationContext } from '../contexts/LocalizationContext';
 import { fetchUserProfile, updateUserSettings, fetchUserContent } from '../services/api';
 import LoadingIndicator from '../components/LoadingIndicator';
 import NewsCard from '../components/NewsCard';
+import LanguageSelector from '../components/LanguageSelector';
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
   const { user, logout } = useAuth();
+  const { t } = useTranslation(); // Add translation hook
+  const { isRTL, getDirectionStyle, getTextAlignStyle } = useLocalizationContext(); // Add localization context
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [userContent, setUserContent] = useState([]);
@@ -91,56 +96,62 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.profileInfo}>
+      <View style={[styles.header, getDirectionStyle()]}>
+        <View style={[styles.profileInfo, getDirectionStyle()]}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
               {user?.username?.charAt(0)?.toUpperCase() || 'U'}
             </Text>
           </View>
           <View>
-            <Text style={styles.username}>{user?.username || 'User'}</Text>
-            <Text style={styles.joinDate}>
-              Member since {profile?.joinDate || 'recently'}
+            <Text style={[styles.username, getTextAlignStyle()]}>
+              {user?.username || 'User'}
+            </Text>
+            <Text style={[styles.joinDate, getTextAlignStyle()]}>
+              {t('profile.memberSince', { date: profile?.joinDate || t('common.recently') })}
             </Text>
           </View>
         </View>
         
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <TouchableOpacity style={[styles.logoutButton, getDirectionStyle()]} onPress={handleLogout}>
           <Feather name="log-out" size={18} color="#64748B" />
-          <Text style={styles.logoutText}>Log out</Text>
+          <Text style={styles.logoutText}>{t('auth.logout')}</Text>
         </TouchableOpacity>
       </View>
       
-      <View style={styles.statsContainer}>
+      <View style={[styles.statsContainer, getDirectionStyle()]}>
         <View style={styles.statItem}>
           <Text style={styles.statValue}>{profile?.stats?.uploads || 0}</Text>
-          <Text style={styles.statLabel}>Uploads</Text>
+          <Text style={styles.statLabel}>{t('profile.uploads')}</Text>
         </View>
         <TouchableOpacity 
           style={styles.statItem}
           onPress={() => navigation.navigate('Followers')}
         >
           <Text style={styles.statValue}>{profile?.stats?.followers || 0}</Text>
-          <Text style={styles.statLabel}>Followers</Text>
+          <Text style={styles.statLabel}>{t('profile.followers')}</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={styles.statItem}
           onPress={() => navigation.navigate('Following')}
         >
           <Text style={styles.statValue}>{profile?.stats?.following || 0}</Text>
-          <Text style={styles.statLabel}>Following</Text>
+          <Text style={styles.statLabel}>{t('profile.following')}</Text>
         </TouchableOpacity>
       </View>
       
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Settings</Text>
+        <Text style={[styles.sectionTitle, getTextAlignStyle()]}>
+          {t('profile.settings')}
+        </Text>
         <View style={styles.settingsContainer}>
-          <View style={styles.settingItem}>
+          <View style={[styles.settingItem, getDirectionStyle()]}>
             <View>
-              <Text style={styles.settingLabel}>Location Tracking</Text>
-              <Text style={styles.settingDescription}>
-                Allow app to track your location for local news
+              <Text style={[styles.settingLabel, getTextAlignStyle()]}>
+                {t('profile.locationTracking')}
+              </Text>
+              <Text style={[styles.settingDescription, getTextAlignStyle()]}>
+                {t('profile.locationTrackingDescription')}
               </Text>
             </View>
             <Switch
@@ -153,11 +164,13 @@ export default function ProfileScreen() {
           
           <View style={styles.settingDivider} />
           
-          <View style={styles.settingItem}>
+          <View style={[styles.settingItem, getDirectionStyle()]}>
             <View>
-              <Text style={styles.settingLabel}>Push Notifications</Text>
-              <Text style={styles.settingDescription}>
-                Receive alerts for breaking news in your area
+              <Text style={[styles.settingLabel, getTextAlignStyle()]}>
+                {t('profile.pushNotifications')}
+              </Text>
+              <Text style={[styles.settingDescription, getTextAlignStyle()]}>
+                {t('profile.pushNotificationsDescription')}
               </Text>
             </View>
             <Switch
@@ -167,25 +180,47 @@ export default function ProfileScreen() {
               thumbColor={settings.notifications ? '#2563EB' : '#F9FAFB'}
             />
           </View>
+          
+          <View style={styles.settingDivider} />
+          
+          <View style={[styles.settingItem, getDirectionStyle()]}>
+            <View>
+              <Text style={[styles.settingLabel, getTextAlignStyle()]}>
+                {t('profile.language')}
+              </Text>
+              <Text style={[styles.settingDescription, getTextAlignStyle()]}>
+                {t('profile.languageDescription')}
+              </Text>
+            </View>
+            <LanguageSelector showLabel={false} type="dropdown" />
+          </View>
         </View>
       </View>
       
       <View style={styles.contentSection}>
-        <View style={styles.tabsContainer}>
+        <View style={[styles.tabsContainer, getDirectionStyle()]}>
           <TouchableOpacity 
             style={[styles.tab, activeTab === 'uploads' && styles.activeTab]}
             onPress={() => setActiveTab('uploads')}
           >
-            <Text style={[styles.tabText, activeTab === 'uploads' && styles.activeTabText]}>
-              My Uploads
+            <Text style={[
+              styles.tabText, 
+              activeTab === 'uploads' && styles.activeTabText,
+              getTextAlignStyle()
+            ]}>
+              {t('profile.myUploads')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.tab, activeTab === 'liked' && styles.activeTab]}
             onPress={() => setActiveTab('liked')}
           >
-            <Text style={[styles.tabText, activeTab === 'liked' && styles.activeTabText]}>
-              Liked Content
+            <Text style={[
+              styles.tabText, 
+              activeTab === 'liked' && styles.activeTabText,
+              getTextAlignStyle()
+            ]}>
+              {t('profile.likedContent')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -207,8 +242,8 @@ export default function ProfileScreen() {
             <Feather name={activeTab === 'uploads' ? 'upload' : 'heart'} size={48} color="#E2E8F0" />
             <Text style={styles.emptyContentText}>
               {activeTab === 'uploads' 
-                ? "You haven't uploaded any news yet" 
-                : "You haven't liked any news yet"}
+                ? t('profile.noUploadsYet')
+                : t('profile.noLikesYet')}
             </Text>
           </View>
         )}
@@ -240,7 +275,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#BFDBFE',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginHorizontal: 16,
   },
   avatarText: {
     fontSize: 24,
@@ -262,7 +297,7 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   logoutText: {
-    marginLeft: 6,
+    marginHorizontal: 6,
     color: '#64748B',
   },
   statsContainer: {
@@ -334,7 +369,7 @@ const styles = StyleSheet.create({
   tab: {
     paddingVertical: 12,
     paddingHorizontal: 16,
-    marginRight: 16,
+    marginHorizontal: 8,
   },
   activeTab: {
     borderBottomWidth: 2,

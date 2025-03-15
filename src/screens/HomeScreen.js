@@ -16,6 +16,8 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from '../contexts/LocationContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLocalizationContext } from '../contexts/LocalizationContext';
+import useLocalization from '../hooks/useLocalization';
 import NewsStream from '../components/NewsStream';
 import PremiumBanner from '../components/PremiumBanner';
 import LocationBadge from '../components/LocationBadge';
@@ -36,6 +38,8 @@ export default function HomeScreen() {
   const { location, locationName } = useLocation();
   const { theme, isDarkMode } = useTheme();
   const navigation = useNavigation();
+  const { t } = useLocalization();
+  const { isRTL, getDirectionStyle, getTextAlignStyle, getContainerStyle } = useLocalizationContext();
   
   // State for news data and metadata
   const [newsData, setNewsData] = useState({

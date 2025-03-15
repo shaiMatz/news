@@ -2,8 +2,14 @@ require('dotenv').config();
 const { Sequelize } = require('sequelize');
 const logger = require('../utils/logger').createLogger('database-config');
 
+// Use database URL from environment, or create a default connection for development
+const databaseUrl = process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/newsgeo';
+
+// Log the connection status
+logger.info('Initializing database connection');
+
 // Sequelize instance with SSL explicitly turned off
-const sequelize = new Sequelize(process.env.DATABASE_URL, {
+const sequelize = new Sequelize(databaseUrl, {
   dialect: 'postgres',
   dialectOptions: {
     ssl: false, // Completely disable SSL for local PostgreSQL

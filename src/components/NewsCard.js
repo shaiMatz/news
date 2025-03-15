@@ -11,6 +11,8 @@ import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLocalizationContext } from '../contexts/LocalizationContext';
+import useLocalization from '../hooks/useLocalization';
 import LocationBadge from './LocationBadge';
 import ShareButton from './ShareButton';
 import ShareSheet from './ShareSheet';
@@ -34,6 +36,8 @@ export default function NewsCard({
   const navigation = useNavigation();
   const { user } = useAuth();
   const { theme } = useTheme();
+  const { t } = useLocalization();
+  const { isRTL, getDirectionStyle, getTextAlignStyle } = useLocalizationContext();
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
   
   // Check if this content requires premium access
@@ -85,13 +89,13 @@ export default function NewsCard({
         ]}
       >
         <View style={styles.thumbnailOverlay}>
-          <View style={styles.badgeContainer}>
+          <View style={[styles.badgeContainer, getDirectionStyle()]}>
             <LocationBadge location={news.location} small={compact} />
             
             {news.isLive && (
-              <View style={styles.liveBadge}>
+              <View style={[styles.liveBadge, getDirectionStyle()]}>
                 <View style={styles.liveIndicator} />
-                <Text style={styles.liveText}>LIVE</Text>
+                <Text style={styles.liveText}>{t('news.live')}</Text>
               </View>
             )}
           </View>
@@ -128,22 +132,22 @@ export default function NewsCard({
           {news.title}
         </Text>
         
-        <View style={styles.metaContainer}>
-          <Text style={[styles.timestamp, { color: theme.textSecondary }]}>
+        <View style={[styles.metaContainer, getDirectionStyle()]}>
+          <Text style={[styles.timestamp, { color: theme.textSecondary }, getTextAlignStyle()]}>
             {formatRelativeTime(news.publishedAt || news.createdAt || new Date())}
           </Text>
           
-          <View style={styles.statsContainer}>
+          <View style={[styles.statsContainer, getDirectionStyle()]}>
             {!compact && (
-              <View style={styles.statItem}>
+              <View style={[styles.statItem, getDirectionStyle()]}>
                 <Feather name="eye" size={12} color={theme.textSecondary} />
-                <Text style={[styles.statText, { color: theme.textSecondary }]}>
+                <Text style={[styles.statText, { color: theme.textSecondary }, getTextAlignStyle()]}>
                   {news.views || 0}
                 </Text>
               </View>
             )}
             
-            <View style={styles.statItem}>
+            <View style={[styles.statItem, getDirectionStyle()]}>
               <Feather 
                 name={news.liked ? "heart" : "heart"} 
                 size={12} 
@@ -152,7 +156,8 @@ export default function NewsCard({
               <Text 
                 style={[
                   styles.statText, 
-                  { color: news.liked ? theme.primary : theme.textSecondary }
+                  { color: news.liked ? theme.primary : theme.textSecondary },
+                  getTextAlignStyle()
                 ]}
               >
                 {news.likes || 0}
@@ -160,9 +165,9 @@ export default function NewsCard({
             </View>
             
             {!compact && news.commentsCount > 0 && (
-              <View style={styles.statItem}>
+              <View style={[styles.statItem, getDirectionStyle()]}>
                 <Feather name="message-circle" size={12} color={theme.textSecondary} />
-                <Text style={[styles.statText, { color: theme.textSecondary }]}>
+                <Text style={[styles.statText, { color: theme.textSecondary }, getTextAlignStyle()]}>
                   {news.commentsCount}
                 </Text>
               </View>
@@ -171,14 +176,14 @@ export default function NewsCard({
             {/* Share button */}
             {!isPremium && (
               <TouchableOpacity 
-                style={styles.statItem} 
+                style={[styles.statItem, getDirectionStyle()]} 
                 onPress={() => setShareSheetVisible(true)}
-                accessibilityLabel="Share news"
+                accessibilityLabel={t('news.shareNews')}
               >
                 <Feather name="share-2" size={12} color={theme.textSecondary} />
                 {!compact && (
-                  <Text style={[styles.statText, { color: theme.textSecondary }]}>
-                    Share
+                  <Text style={[styles.statText, { color: theme.textSecondary }, getTextAlignStyle()]}>
+                    {t('common.share')}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -320,12 +325,12 @@ const styles = StyleSheet.create({
   statItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: 12,
+    marginHorizontal: 6,
   },
   statText: {
     fontSize: 12,
     color: '#94A3B8',
-    marginLeft: 4,
+    marginHorizontal: 4,
   },
   unlockButton: {
     flexDirection: 'row',
@@ -341,6 +346,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: 'bold',
-    marginLeft: 6,
+    marginHorizontal: 6,
   },
 });

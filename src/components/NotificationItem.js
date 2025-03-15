@@ -8,6 +8,8 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLocalizationContext } from '../contexts/LocalizationContext';
+import useLocalization from '../hooks/useLocalization';
 import { formatRelativeTime } from '../utils/timeUtils';
 
 /**
@@ -19,6 +21,8 @@ import { formatRelativeTime } from '../utils/timeUtils';
  */
 const NotificationItem = ({ notification, onPress }) => {
   const { theme } = useTheme();
+  const { t } = useLocalization();
+  const { isRTL, getDirectionStyle, getTextAlignStyle } = useLocalizationContext();
   
   const getNotificationIcon = (type) => {
     switch (type) {
@@ -57,6 +61,7 @@ const NotificationItem = ({ notification, onPress }) => {
     <TouchableOpacity 
       style={[
         styles.notificationItem, 
+        getDirectionStyle(),
         { 
           borderBottomColor: theme.border,
           backgroundColor: theme.background 
@@ -73,15 +78,20 @@ const NotificationItem = ({ notification, onPress }) => {
     >
       <View style={[
         styles.iconContainer, 
+        isRTL ? { marginLeft: 16, marginRight: 0 } : { marginRight: 16 },
         { backgroundColor: theme.isDark ? theme.backgroundSecondary : '#EFF6FF' }
       ]}>
         {getNotificationIcon(notification.type)}
       </View>
       
-      <View style={styles.notificationContent}>
+      <View style={[
+        styles.notificationContent,
+        isRTL ? { marginLeft: 8, marginRight: 0 } : { marginRight: 8 }
+      ]}>
         <Text 
           style={[
             styles.notificationTitle, 
+            getTextAlignStyle(),
             { color: theme.text },
             !notification.read && { fontWeight: '700' }
           ]}
@@ -90,30 +100,46 @@ const NotificationItem = ({ notification, onPress }) => {
           {notification.title}
         </Text>
         <Text 
-          style={[styles.notificationMessage, { color: theme.textSecondary }]}
+          style={[
+            styles.notificationMessage, 
+            getTextAlignStyle(),
+            { color: theme.textSecondary }
+          ]}
           numberOfLines={2}
         >
           {notification.message}
         </Text>
-        <Text style={[styles.notificationTime, { color: theme.textMuted }]}>
+        <Text style={[
+          styles.notificationTime, 
+          getTextAlignStyle(),
+          { color: theme.textMuted }
+        ]}>
           {formatRelativeTime(notification.createdAt)}
         </Text>
       </View>
       
       {!notification.read && (
-        <View style={[styles.unreadIndicator, { backgroundColor: theme.primary }]} />
+        <View style={[
+          styles.unreadIndicator, 
+          isRTL ? { marginRight: 8, marginLeft: 0 } : { marginLeft: 8 },
+          { backgroundColor: theme.primary }
+        ]} />
       )}
       
       {notification.actionable && (
         <TouchableOpacity 
-          style={[styles.actionButton, { backgroundColor: theme.primary }]}
+          style={[
+            styles.actionButton, 
+            isRTL ? { marginRight: 8, marginLeft: 0 } : { marginLeft: 8 },
+            { backgroundColor: theme.primary }
+          ]}
           onPress={(e) => {
             e.stopPropagation();
             onPress({ ...notification, action: true });
           }}
         >
-          <Text style={styles.actionButtonText}>
-            {notification.actionText || 'View'}
+          <Text style={[styles.actionButtonText, getTextAlignStyle()]}>
+            {notification.actionText ? t(notification.actionText) : t('common.view')}
           </Text>
         </TouchableOpacity>
       )}
@@ -123,7 +149,6 @@ const NotificationItem = ({ notification, onPress }) => {
 
 const styles = StyleSheet.create({
   notificationItem: {
-    flexDirection: 'row',
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
@@ -136,11 +161,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#EFF6FF',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
   },
   notificationContent: {
     flex: 1,
-    marginRight: 8,
   },
   notificationTitle: {
     fontSize: 16,
@@ -162,14 +185,12 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
     backgroundColor: '#2563EB',
-    marginLeft: 8,
   },
   actionButton: {
     backgroundColor: '#2563EB',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 4,
-    marginLeft: 8,
   },
   actionButtonText: {
     color: '#FFFFFF',

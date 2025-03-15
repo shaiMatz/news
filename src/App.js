@@ -4,6 +4,7 @@ import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/
 import { AuthProvider } from './contexts/AuthContext';
 import { LocationProvider } from './contexts/LocationContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { LocalizationProvider } from './contexts/LocalizationContext';
 import AppNavigator from './navigation/AppNavigator';
 import { StatusBar, useColorScheme, View } from 'react-native';
 import NetworkStatusBanner from './components/NetworkStatusBanner';
@@ -64,8 +65,10 @@ function AppContent() {
  */
 export default function App() {
   return (
-    <ThemeProvider>
-      <AppContent />
-    </ThemeProvider>
+    <LocalizationProvider>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
+    </LocalizationProvider>
   );
 }

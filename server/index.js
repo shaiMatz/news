@@ -3,6 +3,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const session = require('express-session');
 const passport = require('passport');
+const path = require('path');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const { WebSocketServer, WebSocket } = require('ws');
@@ -16,18 +17,18 @@ const logger = require('./utils/logger').createLogger('server');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 5000;
 const httpServer = createServer(app);
 
 // Configure CORS and JSON body parsing
 app.use(cors({
-  origin: 'http://localhost:8081', // Replace with your frontend origin
+  origin: ['http://localhost:3000', 'http://0.0.0.0:3000'], // React Native client origin
   credentials: true
 }));
 app.use(bodyParser.json());
 
-// Serve static files (using process.cwd() once)
-app.use(express.static(process.cwd()));
+// Serve static files from public directory
+app.use(express.static(path.join(process.cwd(), 'public')));
 
 // Global map for active streams
 const activeStreams = new Map();
@@ -78,7 +79,7 @@ const activeStreams = new Map();
 // Set up Socket.IO for structured real-time events
 const io = new Server(httpServer, {
   cors: {
-    origin: true,
+    origin: ['http://localhost:3000', 'http://0.0.0.0:3000'],
     credentials: true
   },
   transports: ['websocket', 'polling']
@@ -341,19 +342,19 @@ setInterval(() => {
 // Static file and test routes
 app.get('/', (req, res) => {
   logger.debug('GET request to root endpoint', { ip: req.ip });
-  res.sendFile('index.html', { root: process.cwd() });
+  res.sendFile('index.html', { root: path.join(process.cwd(), 'public') });
 });
 app.get('/index.html', (req, res) => {
   logger.debug('GET request to index.html endpoint', { ip: req.ip });
-  res.sendFile('index.html', { root: process.cwd() });
+  res.sendFile('index.html', { root: path.join(process.cwd(), 'public') });
 });
 app.get('/test', (req, res) => {
   logger.debug('GET request to test endpoint', { ip: req.ip });
-  res.sendFile('test.html', { root: process.cwd() });
+  res.sendFile('test.html', { root: path.join(process.cwd(), 'public') });
 });
 app.get('/websocket-test', (req, res) => {
   logger.debug('GET request to WebSocket test endpoint', { ip: req.ip });
-  res.sendFile('websocket-test.html', { root: process.cwd() });
+  res.sendFile('websocket-test.html', { root: path.join(process.cwd(), 'public') });
 });
 app.get('/api/test', (req, res) => {
   logger.debug('Test API endpoint accessed', { ip: req.ip });

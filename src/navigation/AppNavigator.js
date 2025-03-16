@@ -12,6 +12,7 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 import FollowersScreen from '../screens/FollowersScreen';
 import FollowingScreen from '../screens/FollowingScreen';
 import SearchScreen from '../screens/SearchScreen';
+import LiveStreamScreen from '../screens/LiveStreamScreen';
 import LoadingIndicator from '../components/LoadingIndicator';
 import NotificationBadge from '../components/NotificationBadge';
 import ProtectedRoute from '../components/ProtectedRoute';
@@ -302,6 +303,15 @@ export default function AppNavigator() {
           name="Search" 
           component={SearchScreen} 
           options={{ headerShown: false }}
+        />
+        
+        <Stack.Screen 
+          name="LiveStream" 
+          component={LiveStreamScreen} 
+          options={{ 
+            headerShown: false,
+            presentation: 'fullScreenModal'
+          }}
         />
         
         {user && (

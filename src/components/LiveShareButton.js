@@ -59,27 +59,11 @@ export default function LiveShareButton({ floating = false, onPress }) {
   const handleStartLiveStream = () => {
     setShowLiveOptions(false);
     
-    // In a real implementation, we would navigate to the streaming screen
-    // with the anonymous flag passed as a parameter
-    Alert.alert(
-      'Live Stream',
-      `Starting ${isAnonymousBroadcast ? 'anonymous' : 'public'} live stream...`,
-      [
-        { 
-          text: 'OK', 
-          onPress: () => {
-            // Here we would normally navigate to the streaming screen
-            // For now, we'll just show a placeholder alert
-            setTimeout(() => {
-              Alert.alert(
-                'Live Stream Started',
-                `Your ${isAnonymousBroadcast ? 'anonymous' : 'public'} live stream has begun. Viewers won't ${isAnonymousBroadcast ? '' : 'not '}see your identity.`
-              );
-            }, 1000);
-          }
-        }
-      ]
-    );
+    // Navigate to the live stream screen with the appropriate parameters
+    navigation.navigate('LiveStream', {
+      mode: 'create',
+      isAnonymous: isAnonymousBroadcast
+    });
   };
   
   return (

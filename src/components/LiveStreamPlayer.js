@@ -14,6 +14,7 @@ import { Video } from 'expo-av';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLocalizationContext } from '../contexts/LocalizationContext';
 import useLocalization from '../hooks/useLocalization';
+import { getWebSocketUrl } from '../services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -67,25 +68,50 @@ export default function LiveStreamPlayer({
     }
   }, [streamUrl]);
   
-  // Periodic check of stream health
+
+  
+  // Setup WebSocket connection for stream stats
   useEffect(() => {
-    let statsInterval;
-    
-    if (!showThumbnail && isLive) {
-      // Simulate updating viewer count every 10 seconds
-      statsInterval = setInterval(() => {
-        setStreamStats(current => ({
-          ...current,
-          viewers: Math.max(1, Math.floor(Math.random() * 20) + current.viewers - 1),
-          buffering: Math.random() > 0.9 // Occasionally show buffering for realism
-        }));
-      }, 10000);
+    if (!showThumbnail && isLive && streamId) {
+      // Connect to the stats WebSocket for this stream
+      const wsStatsUrl = getWebSocketUrl({ type: 'stream-stats', streamId });
+      const statsWs = new WebSocket(wsStatsUrl);
+      
+      statsWs.onopen = () => {
+        console.log('Stream stats WebSocket connected');
+      };
+      
+      statsWs.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'stream-stats') {
+            setStreamStats(current => ({
+              ...current,
+              viewers: data.viewers || current.viewers,
+              quality: data.quality || current.quality,
+              buffering: data.buffering !== undefined ? data.buffering : current.buffering
+            }));
+          }
+        } catch (err) {
+          console.error('Error parsing stream stats:', err);
+        }
+      };
+      
+      statsWs.onerror = (error) => {
+        console.error('Stream stats WebSocket error:', error);
+      };
+      
+      statsWs.onclose = () => {
+        console.log('Stream stats WebSocket closed');
+      };
+      
+      return () => {
+        if (statsWs && (statsWs.readyState === WebSocket.OPEN || statsWs.readyState === WebSocket.CONNECTING)) {
+          statsWs.close();
+        }
+      };
     }
-    
-    return () => {
-      if (statsInterval) clearInterval(statsInterval);
-    };
-  }, [showThumbnail, isLive]);
+  }, [showThumbnail, isLive, streamId]);
   
   const handlePlaybackStatusUpdate = (status) => {
     setStatus(status);
@@ -213,11 +239,20 @@ export default function LiveStreamPlayer({
   return (
     <View style={styles.container}>
       {showThumbnail ? (
-        <Image 
-          source={{ uri: thumbnail || 'https://via.placeholder.com/400x240?text=Live' }} 
-          style={styles.thumbnail}
-          resizeMode="cover"
-        />
+        <View style={styles.thumbnailContainer}>
+          {thumbnail ? (
+            <Image 
+              source={{ uri: thumbnail }}
+              style={styles.thumbnail}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={styles.placeholderContainer}>
+              <Feather name="video" size={48} color="#94A3B8" />
+              <Text style={styles.placeholderText}>Live Stream</Text>
+            </View>
+          )}
+        </View>
       ) : (
         <Video
           ref={videoRef}
@@ -482,5 +517,21 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     marginLeft: 4,
+  },
+  thumbnailContainer: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#0F172A',
+  },
+  placeholderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0F172A',
+  },
+  placeholderText: {
+    color: '#94A3B8',
+    marginTop: 12,
+    fontSize: 16,
   },
 });

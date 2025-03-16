@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -8,13 +8,17 @@ import {
   ScrollView,
   Alert,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Image,
+  ActivityIndicator,
+  Animated
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useLocation } from '../contexts/LocationContext';
 import { uploadNews } from '../services/api';
 import { requestCameraPermission, requestStoragePermission } from '../utils/permissions';
+import { Video } from 'expo-av';
 import LoadingIndicator from '../components/LoadingIndicator';
 
 export default function UploadNewsScreen() {
@@ -25,6 +29,21 @@ export default function UploadNewsScreen() {
   const [videoSource, setVideoSource] = useState(null);
   const [thumbnail, setThumbnail] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [showVideoPreview, setShowVideoPreview] = useState(false);
+  
+  // Animation for upload progress
+  const progressAnimation = new Animated.Value(0);
+  
+  useEffect(() => {
+    if (loading && uploadProgress > 0) {
+      Animated.timing(progressAnimation, {
+        toValue: uploadProgress,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+    }
+  }, [uploadProgress, loading]);
 
   const handleSelectVideo = async () => {
     try {
@@ -39,19 +58,69 @@ export default function UploadNewsScreen() {
         return;
       }
       
-      // In a real app, we would use something like react-native-image-picker
-      // This is a simplified example
+      // Show source selection options
       Alert.alert(
         'Select Video Source',
         'Choose where you want to select your video from',
         [
           {
             text: 'Camera',
-            onPress: () => console.log('Camera selected'),
+            onPress: async () => {
+              try {
+                // Import image picker dynamically to avoid issues
+                const ImagePicker = require('expo-image-picker');
+                
+                const result = await ImagePicker.launchCameraAsync({
+                  mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+                  allowsEditing: true,
+                  quality: 0.8,
+                  videoMaxDuration: 60, // Limit to 60 seconds
+                });
+      
+                if (!result.canceled && result.assets && result.assets.length > 0) {
+                  setVideoSource({ uri: result.assets[0].uri });
+                  
+                  // Normally we would generate a thumbnail from video here
+                  // For now, we'll just set a placeholder
+                  setThumbnail({ 
+                    uri: result.assets[0].uri, 
+                    type: 'video'
+                  });
+                }
+              } catch (err) {
+                console.error('Camera video selection error:', err);
+                Alert.alert('Error', 'Failed to record video. Please try again.');
+              }
+            },
           },
           {
             text: 'Gallery',
-            onPress: () => console.log('Gallery selected'),
+            onPress: async () => {
+              try {
+                // Import image picker dynamically to avoid issues
+                const ImagePicker = require('expo-image-picker');
+                
+                const result = await ImagePicker.launchImageLibraryAsync({
+                  mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+                  allowsEditing: true,
+                  quality: 0.8,
+                });
+      
+                if (!result.canceled && result.assets && result.assets.length > 0) {
+                  setVideoSource({ uri: result.assets[0].uri });
+                  
+                  // Normally we would generate a thumbnail from video here
+                  // For now, we'll just set a placeholder
+                  setThumbnail({ 
+                    uri: result.assets[0].uri, 
+                    type: 'video'
+                  });
+                }
+              } catch (err) {
+                console.error('Gallery video selection error:', err);
+                Alert.alert('Error', 'Failed to select video. Please try again.');
+              }
+            },
           },
           {
             text: 'Cancel',
@@ -59,11 +128,6 @@ export default function UploadNewsScreen() {
           },
         ]
       );
-      
-      // Mock video selection
-      setVideoSource({ uri: 'mock://video-uri' });
-      setThumbnail({ uri: 'mock://thumbnail-uri' });
-      
     } catch (error) {
       console.error('Error selecting video:', error);
       Alert.alert('Error', 'Failed to select video. Please try again.');
@@ -88,6 +152,7 @@ export default function UploadNewsScreen() {
     
     try {
       setLoading(true);
+      setUploadProgress(0);
       
       const newsData = {
         title,
@@ -101,29 +166,90 @@ export default function UploadNewsScreen() {
         } : null
       };
       
+      // Simulate upload progress
+      // In a real app, your API would provide progress updates
+      const simulateProgress = () => {
+        // Progress stops at 90% to simulate server-side processing
+        const intervalId = setInterval(() => {
+          setUploadProgress(prev => {
+            if (prev >= 90) {
+              clearInterval(intervalId);
+              return prev;
+            }
+            // Random jumps in progress to simulate real upload behavior
+            return Math.min(90, prev + (Math.random() * 15));
+          });
+        }, 500);
+        
+        return intervalId;
+      };
+      
+      const progressInterval = simulateProgress();
+      
+      // Actual API call - in a real app this would report progress
       await uploadNews(newsData);
       
-      Alert.alert(
-        'Upload Successful',
-        'Your news has been uploaded successfully!',
-        [{ text: 'OK', onPress: () => {
-          setTitle('');
-          setDescription('');
-          setVideoSource(null);
-          setThumbnail(null);
-          navigation.navigate('Home');
-        }}]
-      );
+      // Clear the interval and set progress to 100%
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+      
+      // Short delay to show 100% completion before success message
+      setTimeout(() => {
+        setLoading(false);
+        Alert.alert(
+          'Upload Successful',
+          'Your news has been uploaded successfully!',
+          [{ text: 'OK', onPress: () => {
+            setTitle('');
+            setDescription('');
+            setVideoSource(null);
+            setThumbnail(null);
+            setUploadProgress(0);
+            navigation.navigate('Home');
+          }}]
+        );
+      }, 500);
+      
     } catch (error) {
       console.error('Upload error:', error);
-      Alert.alert('Upload Failed', 'There was an error uploading your news. Please try again.');
-    } finally {
       setLoading(false);
+      Alert.alert('Upload Failed', 'There was an error uploading your news. Please try again.');
     }
   };
 
   if (loading) {
-    return <LoadingIndicator message="Uploading your news..." />;
+    return (
+      <View style={styles.loadingContainer}>
+        <View style={styles.loadingContent}>
+          <ActivityIndicator size="large" color="#2563EB" />
+          <Text style={styles.loadingText}>Uploading your news...</Text>
+          
+          <View style={styles.uploadProgressContainer}>
+            <Animated.View 
+              style={[
+                styles.uploadProgressBar, 
+                {
+                  width: progressAnimation.interpolate({
+                    inputRange: [0, 100],
+                    outputRange: ['0%', '100%']
+                  })
+                }
+              ]} 
+            />
+          </View>
+          
+          <Text style={styles.uploadProgressText}>
+            {Math.round(uploadProgress)}% complete
+          </Text>
+
+          {uploadProgress >= 90 && (
+            <Text style={styles.processingText}>
+              Processing video, almost done...
+            </Text>
+          )}
+        </View>
+      </View>
+    );
   }
 
   return (
@@ -162,22 +288,61 @@ export default function UploadNewsScreen() {
           
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Video</Text>
-            <TouchableOpacity 
-              style={styles.videoSelectButton}
-              onPress={handleSelectVideo}
-            >
-              {videoSource ? (
-                <View style={styles.videoSelected}>
-                  <Feather name="check-circle" size={24} color="#10B981" />
-                  <Text style={styles.videoSelectedText}>Video selected</Text>
+            {videoSource ? (
+              <View style={styles.videoPreviewContainer}>
+                <Video
+                  source={{ uri: videoSource.uri }}
+                  style={styles.videoPreview}
+                  resizeMode="cover"
+                  useNativeControls
+                  isLooping={false}
+                />
+                <View style={styles.videoActions}>
+                  <TouchableOpacity 
+                    style={styles.videoActionButton}
+                    onPress={() => setShowVideoPreview(!showVideoPreview)}
+                  >
+                    <Feather name={showVideoPreview ? "eye-off" : "eye"} size={16} color="#64748B" />
+                    <Text style={styles.videoActionText}>
+                      {showVideoPreview ? "Hide Preview" : "Show Preview"}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.videoActionButton, styles.videoActionButtonDanger]}
+                    onPress={() => {
+                      Alert.alert(
+                        "Remove Video",
+                        "Are you sure you want to remove this video?",
+                        [
+                          { text: "Cancel", style: "cancel" },
+                          { 
+                            text: "Remove", 
+                            style: "destructive",
+                            onPress: () => {
+                              setVideoSource(null);
+                              setThumbnail(null);
+                            }
+                          }
+                        ]
+                      );
+                    }}
+                  >
+                    <Feather name="trash-2" size={16} color="#EF4444" />
+                    <Text style={[styles.videoActionText, styles.videoActionTextDanger]}>
+                      Remove
+                    </Text>
+                  </TouchableOpacity>
                 </View>
-              ) : (
-                <>
-                  <Feather name="video" size={24} color="#64748B" />
-                  <Text style={styles.videoSelectText}>Select video</Text>
-                </>
-              )}
-            </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity 
+                style={styles.videoSelectButton}
+                onPress={handleSelectVideo}
+              >
+                <Feather name="video" size={24} color="#64748B" />
+                <Text style={styles.videoSelectText}>Select video</Text>
+              </TouchableOpacity>
+            )}
           </View>
           
           <View style={styles.locationGroup}>
@@ -299,5 +464,56 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginRight: 8,
+  },
+  videoPreviewContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  videoPreview: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#0F172A',
+  },
+  videoActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  videoActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+  },
+  videoActionButtonDanger: {
+    borderRadius: 4,
+  },
+  videoActionText: {
+    marginLeft: 6,
+    fontSize: 14,
+    color: '#64748B',
+  },
+  videoActionTextDanger: {
+    color: '#EF4444',
+  },
+  uploadProgressContainer: {
+    marginTop: 16,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    height: 8,
+    overflow: 'hidden',
+  },
+  uploadProgressBar: {
+    height: '100%',
+    backgroundColor: '#10B981',
+  },
+  uploadProgressText: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#64748B',
+    textAlign: 'right',
   },
 });

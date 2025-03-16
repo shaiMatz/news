@@ -11,8 +11,8 @@ const isReplit = typeof window !== 'undefined' &&
 const API_HOST = isReplit 
   ? window.location.origin
   : Platform.OS !== 'android'
-    ? 'http://localhost:8080'
-    : 'http://172.20.10.5:8080'; // Android emulator IP for localhost
+    ? 'http://localhost:5000'
+    : 'http://172.20.10.5:5000'; // Android emulator IP for localhost
 
 
 /**
@@ -471,14 +471,14 @@ function getWebSocketBaseURL() {
 
   // Handle different platforms correctly
   if (Platform.OS === 'android') {
-    return 'ws://10.0.2.2:8080'; // Android emulator
+    return 'ws://10.0.2.2:5000'; // Android emulator
   }
 
   if (Platform.OS === 'ios') {
-    return 'ws://localhost:8080'; // iOS simulator
+    return 'ws://localhost:5000'; // iOS simulator
   }
 
-  return 'ws://172.20.10.5:8080';
+  return 'ws://172.20.10.5:5000';
 }
 
 export function getWebSocketUrl(params = {}) {

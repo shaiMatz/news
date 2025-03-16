@@ -27,7 +27,7 @@ export default function LanguageSelector({
   onLanguageChange = null
 }) {
   const { language, changeLanguage, getAvailableLanguages, t } = useLocalization();
-  const { isRTL, getDirectionStyle, getTextAlignStyle, getRTLStyles } = useLocalizationContext();
+  const { isRTL, getDirectionStyle, getTextAlignStyle } = useLocalizationContext();
   const [modalVisible, setModalVisible] = useState(false);
   const languages = getAvailableLanguages();
   

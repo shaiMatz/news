@@ -32,7 +32,7 @@ export function LocalizationProvider({ children }) {
         setLanguage(currentLang);
         
         // Check if the language is RTL
-        const rtlLanguages = ['he', 'ar']; // Add more RTL languages as needed
+        const rtlLanguages = ['he', 'ar']; // Hebrew and Arabic are RTL languages
         const isRtl = rtlLanguages.includes(currentLang);
         
         // Set RTL flag
@@ -68,7 +68,7 @@ export function LocalizationProvider({ children }) {
       setLanguage(newLanguage);
       
       // Check if the language is RTL
-      const rtlLanguages = ['he', 'ar']; // Add more RTL languages as needed
+      const rtlLanguages = ['he', 'ar']; // Hebrew and Arabic are RTL languages
       const isRtl = rtlLanguages.includes(newLanguage);
       
       // Set RTL flag

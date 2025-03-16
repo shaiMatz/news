@@ -82,6 +82,10 @@ export default function useLocalization() {
     return [
       { code: 'en', name: 'English', nativeName: 'English', isRTL: false },
       { code: 'he', name: 'Hebrew', nativeName: 'עברית', isRTL: true },
+      { code: 'es', name: 'Spanish', nativeName: 'Español', isRTL: false },
+      { code: 'fr', name: 'French', nativeName: 'Français', isRTL: false },
+      { code: 'ar', name: 'Arabic', nativeName: 'العربية', isRTL: true },
+      { code: 'zh', name: 'Chinese', nativeName: '中文', isRTL: false },
     ];
   };
 

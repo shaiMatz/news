@@ -83,9 +83,42 @@
       box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
     }
 
+    /* Language selector */
+    .language-selector {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      background-color: rgba(255, 255, 255, 0.8);
+      border-radius: 4px;
+      padding: 5px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .language-selector select {
+      padding: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background-color: white;
+    }
+
+    /* RTL support */
+    html[dir="rtl"] .auth-container {
+      flex-direction: row-reverse;
+    }
+    
+    html[dir="rtl"] .language-selector {
+      left: 10px;
+      right: auto;
+    }
+
     /* Media queries */
     @media (max-width: 768px) {
       .auth-container {
+        flex-direction: column;
+      }
+      
+      html[dir="rtl"] .auth-container {
         flex-direction: column;
       }
     }
@@ -116,6 +149,16 @@
       .auth-form-container {
         background-color: #111827;
       }
+      
+      .language-selector {
+        background-color: rgba(31, 41, 55, 0.8);
+      }
+      
+      .language-selector select {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: #f3f4f6;
+      }
     }
   </style>
 </head>
@@ -125,6 +168,10 @@
       <div class="loading-spinner"></div>
     </div>
   </div>
+  
+  <!-- Localization -->
+  <script src="/src/web-i18n.js"></script>
+  
   <!-- React dependencies from CDN -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>

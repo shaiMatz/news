@@ -20,6 +20,7 @@ app.use((err, req, res, next) => {
 
 // Root route that serves the main HTML
 app.get('/*', (req, res) => {
+  console.log(`Request for: ${req.url}`);
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 

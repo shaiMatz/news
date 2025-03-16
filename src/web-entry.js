@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { Switch, Route } from 'wouter';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './hooks/use-auth';
-import App from './AppWeb';
+import App from './App';
 
 // Create React Query client
 const queryClient = new QueryClient({

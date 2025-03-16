@@ -5,6 +5,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Import translations
 import enTranslation from './locales/en.json';
 import heTranslation from './locales/he.json';
+import esTranslation from './locales/es.json';
+import frTranslation from './locales/fr.json';
+import arTranslation from './locales/ar.json';
+import zhTranslation from './locales/zh.json';
 
 const LANGUAGE_DETECTOR = {
   type: 'languageDetector',
@@ -20,7 +24,7 @@ const LANGUAGE_DETECTOR = {
       } else {
         // If no stored language, use device language or fallback to 'en'
         const deviceLanguage = RNLocalize.locale.split('-')[0];
-        const supportedLanguages = ['en', 'he']; // Add more as needed
+        const supportedLanguages = ['en', 'he', 'es', 'fr', 'ar', 'zh']; // All supported languages
         
         // Only use device language if it's supported, otherwise use English
         return callback(
@@ -54,6 +58,18 @@ const initI18n = async () => {
         },
         he: {
           translation: heTranslation
+        },
+        es: {
+          translation: esTranslation
+        },
+        fr: {
+          translation: frTranslation
+        },
+        ar: {
+          translation: arTranslation
+        },
+        zh: {
+          translation: zhTranslation
         }
       },
       fallbackLng: 'en',

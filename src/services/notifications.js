@@ -123,6 +123,8 @@ export function addNotificationListener(callback) {
  */
 let notificationSocket = null;
 let notificationCallbacks = [];
+let reconnectAttempts = 0;
+let maxReconnectAttempts = 5; // Stop retrying after 5 failed attempts
 
 /**
  * Setup WebSocket connection for real-time notifications
@@ -134,83 +136,46 @@ export function setupNotificationSocket(user) {
   if (notificationSocket) {
     return notificationSocket;
   }
-  
+
   try {
-    // Create WebSocket connection with user ID and type
-    const wsUrl = getWebSocketUrl({
-      userId: user?.id,
-      type: 'notifications'
-    });
-    
+    const wsUrl = getWebSocketUrl({ userId: user?.id, type: 'notifications' });
+
     console.log('Connecting to notifications WebSocket:', wsUrl);
     notificationSocket = new WebSocket(wsUrl);
-    
-    // Connection opened
+
     notificationSocket.onopen = () => {
       console.log('Notification WebSocket connected');
-      
-      // Authenticate the socket connection with user ID
-      if (user?.id) {
-        notificationSocket.send(JSON.stringify({ 
-          type: 'auth', 
-          userId: user.id 
-        }));
-      }
-      
-      // Set up keepalive ping to prevent connection timeout
-      setInterval(() => {
-        if (notificationSocket && notificationSocket.readyState === WebSocket.OPEN) {
-          notificationSocket.send(JSON.stringify({ type: 'ping' }));
-        }
-      }, 30000); // Send ping every 30 seconds
+      reconnectAttempts = 0; // Reset reconnect counter
     };
-    
-    // Listen for messages
+
     notificationSocket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        
-        // Handle different message types
-        if (data.type === 'notification') {
-          // Schedule a local notification
-          scheduleLocalNotification({
-            title: data.title,
-            body: data.message,
-            data: data
-          });
-          
-          // Call all registered callbacks
-          notificationCallbacks.forEach(callback => callback(data));
-        }
+        console.log('WebSocket message received:', data);
       } catch (error) {
-        console.error('Error processing notification message:', error);
+        console.error('Error processing WebSocket message:', error);
       }
     };
-    
-    // Handle errors
+
     notificationSocket.onerror = (error) => {
       console.error('Notification WebSocket error:', error);
     };
-    
-    // Handle connection close
+
     notificationSocket.onclose = (event) => {
       console.log('Notification WebSocket disconnected, code:', event.code);
-      
-      // Store the user info for reconnection
-      const userInfo = user;
-      
-      // Attempt to reconnect after a delay unless this was a deliberate close
-      if (event.code !== 1000) {
+
+      if (event.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
+        reconnectAttempts++;
         setTimeout(() => {
-          console.log('Attempting to reconnect notification WebSocket...');
+          console.log(`Reconnecting WebSocket... Attempt ${reconnectAttempts}/${maxReconnectAttempts}`);
           notificationSocket = null;
-          setupNotificationSocket(userInfo);
-        }, 5000);
+          setupNotificationSocket(user);
+        }, 5000 * reconnectAttempts); // Exponential backoff
       } else {
-        notificationSocket = null;
+        console.error('Max reconnect attempts reached. WebSocket closed.');
       }
     };
-    
+
     return notificationSocket;
   } catch (error) {
     console.error('Error setting up notification WebSocket:', error);

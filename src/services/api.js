@@ -12,7 +12,7 @@ const API_HOST = isReplit
   ? window.location.origin
   : Platform.OS !== 'android'
     ? 'http://localhost:8080'
-    : 'http:/10.100.102.3:8080'; // Android emulator IP for localhost
+    : 'http://172.20.10.5:8080'; // Android emulator IP for localhost
 
 
 /**
@@ -463,39 +463,38 @@ export async function fetchUserProfileById(userId) {
   return apiRequest(`/user/profile/${userId}`);
 }
 
-// WebSocket helpers
-export function getWebSocketUrl(params = {}) {
-  const { newsId, userId, type } = params;
-  
-  // For Replit environment, use the current URL with /ws path and change protocol
-  const isReplit = typeof window !== 'undefined' && 
-    window.location && 
-    window.location.hostname && 
-    window.location.hostname.includes('.replit.dev');
-  
-  let url;
-  if (isReplit) {
-    // Use the current origin but replace the protocol
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    url = `${protocol}//${window.location.host}/ws`;
-  } else {
-    // For local development
-    const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsHost = API_URL ? API_URL.replace(/^https?:\/\//, '') : 'localhost:5000';
-    url = `${protocol}//${wsHost}/ws`;
+/// Get the correct WebSocket base URL
+function getWebSocketBaseURL() {
+  if (typeof window !== 'undefined' && window.location) {
+    return window.location.protocol === 'https:' ? 'wss://' : 'ws://';
   }
-  
-  // Create URL with query parameters
+
+  // Handle different platforms correctly
+  if (Platform.OS === 'android') {
+    return 'ws://10.0.2.2:8080'; // Android emulator
+  }
+
+  if (Platform.OS === 'ios') {
+    return 'ws://localhost:8080'; // iOS simulator
+  }
+
+  return 'ws://172.20.10.5:8080';
+}
+
+export function getWebSocketUrl(params = {}) {
+  const { userId, type } = params;
+  const wsBaseURL = getWebSocketBaseURL();
+
+  let url = `${wsBaseURL}/ws`;
+
   const queryParams = [];
-  
-  if (newsId) queryParams.push(`newsId=${newsId}`);
-  if (userId) queryParams.push(`userId=${userId || 'anonymous-' + Date.now()}`);
+  if (userId) queryParams.push(`userId=${userId}`);
   if (type) queryParams.push(`type=${type}`);
-  
+
   if (queryParams.length > 0) {
     url += `?${queryParams.join('&')}`;
   }
-  
+
   console.log('Connecting to WebSocket at:', url);
   return url;
 }

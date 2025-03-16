@@ -27,6 +27,7 @@ function userRoutes(storage) {
    * Protected route - requires authentication
    */
   router.get('/', requireAuth, async (req, res, next) => {
+    logger.info('[User] Getting user profile');
     try {
       const user = await storage.getUserById(req.user.id);
       
@@ -65,6 +66,7 @@ function userRoutes(storage) {
    * Protected route - requires authentication
    */
   router.put('/', requireAuth, async (req, res, next) => {
+    logger.info('[User] Updating user profile');
     try {
       const { email } = req.body;
       
@@ -108,6 +110,7 @@ function userRoutes(storage) {
    * Protected route - requires authentication
    */
   router.put('/settings', requireAuth, async (req, res, next) => {
+    logger.info('[User] Updating user settings');
     try {
       const { locationTracking, notifications, contentLanguage } = req.body;
       
@@ -145,6 +148,7 @@ function userRoutes(storage) {
    * Protected route - requires authentication
    */
   router.get('/content', requireAuth, async (req, res, next) => {
+    logger.info('[User] Getting user content');
     try {
       // Get user's uploaded news
       const uploads = await storage.getUserNews(req.user.id);
@@ -184,6 +188,7 @@ function userRoutes(storage) {
    * Protected route - requires authentication
    */
   router.post('/follow/:userId', requireAuth, async (req, res, next) => {
+    logger.info('[User] Following user');
     try {
       const targetUserId = parseInt(req.params.userId, 10);
       
@@ -218,6 +223,7 @@ function userRoutes(storage) {
    * Protected route - requires authentication
    */
   router.delete('/follow/:userId', requireAuth, async (req, res, next) => {
+    logger.info('[User] Unfollowing user');
     try {
       const targetUserId = parseInt(req.params.userId, 10);
       
@@ -240,6 +246,7 @@ function userRoutes(storage) {
    * Protected route - requires authentication
    */
   router.get('/followers', requireAuth, async (req, res, next) => {
+    logger.info('[User] Getting followers');
     try {
       const followers = await storage.getFollowers(req.user.id);
       res.json(followers);
@@ -253,6 +260,7 @@ function userRoutes(storage) {
    * Protected route - requires authentication
    */
   router.get('/following', requireAuth, async (req, res, next) => {
+    logger.info('[User] Getting following');
     try {
       const following = await storage.getFollowing(req.user.id);
       res.json(following);
@@ -266,6 +274,7 @@ function userRoutes(storage) {
    * Protected route - requires authentication
    */
   router.get('/following/:userId', requireAuth, async (req, res, next) => {
+    logger.info('[User] Checking if user is following another user');
     try {
       const targetUserId = parseInt(req.params.userId, 10);
       
@@ -288,6 +297,7 @@ function userRoutes(storage) {
    * Protected route - requires authentication
    */
   router.get('/feed', requireAuth, async (req, res, next) => {
+    logger.info('[User] Getting news feed');
     try {
       const limit = req.query.limit ? parseInt(req.query.limit, 10) : 20;
       const feed = await storage.getFollowingFeed(req.user.id, limit);
@@ -302,6 +312,7 @@ function userRoutes(storage) {
    * Public route - does not require authentication
    */
   router.get('/profile/:userId', async (req, res, next) => {
+    logger.info('[User] Getting public profile');
     try {
       const userId = parseInt(req.params.userId, 10);
       

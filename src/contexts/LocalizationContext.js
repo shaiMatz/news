@@ -15,6 +15,8 @@ export function LocalizationProvider({ children }) {
   const [isLoading, setIsLoading] = useState(true);
   const [language, setLanguage] = useState('en');
   const [isRTL, setIsRTL] = useState(false);
+  const getDirectionStyle = () => isRTL ? { flexDirection: 'row-reverse' } : { flexDirection: 'row' };
+  const getTextAlignStyle = () => isRTL ? { textAlign: 'right' } : { textAlign: 'left' };
 
   useEffect(() => {
     // Initialize i18n and get the stored language
@@ -110,6 +112,9 @@ export function LocalizationProvider({ children }) {
     language,
     isRTL,
     setLanguage: setAppLanguage,
+    getDirectionStyle,
+    getTextAlignStyle,
+
   };
 
   return (

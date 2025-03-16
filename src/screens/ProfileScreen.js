@@ -22,7 +22,7 @@ export default function ProfileScreen() {
   const navigation = useNavigation();
   const { user, logout } = useAuth();
   const { t } = useTranslation(); // Add translation hook
-  const { isRTL, getDirectionStyle, getTextAlignStyle } = useLocalizationContext(); // Add localization context
+  const { isRTL, getTextAlignStyle, getDirectionStyle } = useLocalizationContext(); // Add localization context
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [userContent, setUserContent] = useState([]);
@@ -96,8 +96,8 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      <View style={[styles.header, getDirectionStyle()]}>
-        <View style={[styles.profileInfo, getDirectionStyle()]}>
+      <View style={styles.header}>
+        <View style={styles.profileInfo}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
               {user?.username?.charAt(0)?.toUpperCase() || 'U'}

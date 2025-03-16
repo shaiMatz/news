@@ -57,6 +57,7 @@ const activeStreams = new Map();
     app.use('/api/profile', userRoutes(storage));
     app.use('/api/notifications', notificationsRoutes(storage, { sendNotificationToUser }));
     app.use('/api/streams', streamingRoutes(storage));
+    app.use('/api/user', userRoutes(storage));
 
     logger.info('Database storage initialized successfully');
 

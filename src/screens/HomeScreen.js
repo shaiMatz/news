@@ -1,15 +1,14 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  Text, 
-  RefreshControl, 
-  TouchableOpacity, 
-  Alert, 
-  ScrollView, 
+import {
+  View,
+  StyleSheet,
+  Text,
+  RefreshControl,
+  TouchableOpacity,
+  Alert,
   FlatList,
   Image,
-  ImageBackground, 
+  ImageBackground,
   Dimensions
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -18,13 +17,13 @@ import { useLocation } from '../contexts/LocationContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLocalizationContext } from '../contexts/LocalizationContext';
 import useLocalization from '../hooks/useLocalization';
-import NewsStream from '../components/NewsStream';
 import PremiumBanner from '../components/PremiumBanner';
 import LocationBadge from '../components/LocationBadge';
 import LoadingIndicator from '../components/LoadingIndicator';
 import ThemeToggle from '../components/ThemeToggle';
 import TrendingNewsStream from '../components/TrendingNewsStream';
 import ActiveRegionsPanel from '../components/ActiveRegionsPanel';
+import NewsCard from '../components/NewsCard';
 import { fetchNews } from '../services/api';
 import { StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -40,7 +39,7 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const { t } = useLocalization();
   const { isRTL, getDirectionStyle, getTextAlignStyle, getContainerStyle } = useLocalizationContext();
-  
+
   // State for news data and metadata
   const [newsData, setNewsData] = useState({
     news: [],
@@ -51,7 +50,7 @@ export default function HomeScreen() {
       hasMoreContent: false
     }
   });
-  
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -59,15 +58,15 @@ export default function HomeScreen() {
 
   // Extract news items from state
   const news = useMemo(() => newsData.news || [], [newsData]);
-  
+
   // Check if there are more items available for premium users
-  const hasMoreContent = useMemo(() => 
-    newsData.meta?.hasMoreContent || false, 
-  [newsData]);
+  const hasMoreContent = useMemo(() =>
+    newsData.meta?.hasMoreContent || false,
+    [newsData]);
 
   // Filter news by active tab
   const filteredNews = useMemo(() => {
-    switch(activeTab) {
+    switch (activeTab) {
       case 'live':
         return news.filter(item => item.isLive);
       case 'video':
@@ -81,23 +80,23 @@ export default function HomeScreen() {
 
   // Featured live content for the hero section
   const featuredLiveContent = useMemo(() => {
-    return news.find(item => item.isLive && item.featured) || 
-           news.find(item => item.isLive) || 
-           null;
+    return news.find(item => item.isLive && item.featured) ||
+      news.find(item => item.isLive) ||
+      null;
   }, [news]);
 
   const loadNews = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const locationParams = location ? {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude
       } : {};
-      
+
       const response = await fetchNews(locationParams);
-      
+
       // Handle the updated response format with meta information
       if (response && response.news) {
         setNewsData(response);
@@ -139,15 +138,15 @@ export default function HomeScreen() {
         'Please sign in to access this news item.',
         [
           { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Sign In', 
+          {
+            text: 'Sign In',
             onPress: () => navigation.navigate('Auth')
           }
         ]
       );
       return;
     }
-    
+
     navigation.navigate('NewsDetail', { newsId: newsItem.id, newsItem });
   };
 
@@ -157,9 +156,9 @@ export default function HomeScreen() {
 
   const renderFeaturedContent = () => {
     if (!featuredLiveContent) return null;
-    
+
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.featuredContainer}
         onPress={() => handleNewsPress(featuredLiveContent)}
         activeOpacity={0.9}
@@ -182,18 +181,18 @@ export default function HomeScreen() {
                 </View>
               )}
             </View>
-            
+
             <View style={styles.featuredTextContainer}>
               <Text style={styles.featuredTitle} numberOfLines={2}>
                 {featuredLiveContent.title}
               </Text>
-              
+
               <View style={styles.featuredMeta}>
                 <View style={styles.authorContainer}>
                   {featuredLiveContent.authorImage ? (
-                    <Image 
-                      source={{ uri: featuredLiveContent.authorImage }} 
-                      style={styles.authorImage} 
+                    <Image
+                      source={{ uri: featuredLiveContent.authorImage }}
+                      style={styles.authorImage}
                     />
                   ) : (
                     <View style={[styles.authorImage, styles.authorInitial]}>
@@ -204,14 +203,14 @@ export default function HomeScreen() {
                   )}
                   <Text style={styles.authorName}>{featuredLiveContent.author || 'Unknown'}</Text>
                 </View>
-                
+
                 <Text style={styles.featuredTime}>
                   {formatRelativeTime(featuredLiveContent.publishedAt || new Date())}
                 </Text>
               </View>
             </View>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.playButton}
               onPress={() => handleNewsPress(featuredLiveContent)}
             >
@@ -225,116 +224,66 @@ export default function HomeScreen() {
 
   const renderTabBar = () => (
     <View style={[styles.tabBar, { backgroundColor: theme.background }]}>
-      <ScrollView 
-        horizontal 
+      <FlatList
+        data={[
+          { key: 'all', icon: 'grid', label: 'All' },
+          { key: 'live', icon: 'radio', label: 'Live Now' },
+          { key: 'video', icon: 'film', label: 'Videos' },
+          ...(user ? [{ key: 'following', icon: 'users', label: 'Following' }] : []),
+          { key: 'search', icon: 'trending-up', label: 'Trending', isNav: true }
+        ]}
+        horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.tabBarScroll}
-      >
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'all' && styles.activeTab]}
-          onPress={() => setActiveTab('all')}
-        >
-          <Feather 
-            name="grid" 
-            size={16} 
-            color={activeTab === 'all' ? theme.primary : theme.textSecondary} 
-          />
-          <Text 
-            style={[
-              styles.tabText, 
-              { color: activeTab === 'all' ? theme.primary : theme.textSecondary }
-            ]}
-          >
-            All
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'live' && styles.activeTab]}
-          onPress={() => setActiveTab('live')}
-        >
-          <Feather 
-            name="radio" 
-            size={16} 
-            color={activeTab === 'live' ? '#f97316' : theme.textSecondary} 
-          />
-          <Text 
-            style={[
-              styles.tabText, 
-              { color: activeTab === 'live' ? '#f97316' : theme.textSecondary }
-            ]}
-          >
-            Live Now
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'video' && styles.activeTab]}
-          onPress={() => setActiveTab('video')}
-        >
-          <Feather 
-            name="film" 
-            size={16} 
-            color={activeTab === 'video' ? theme.primary : theme.textSecondary} 
-          />
-          <Text 
-            style={[
-              styles.tabText, 
-              { color: activeTab === 'video' ? theme.primary : theme.textSecondary }
-            ]}
-          >
-            Videos
-          </Text>
-        </TouchableOpacity>
-        
-        {user && (
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'following' && styles.activeTab]}
-            onPress={() => setActiveTab('following')}
-          >
-            <Feather 
-              name="users" 
-              size={16} 
-              color={activeTab === 'following' ? theme.primary : theme.textSecondary} 
-            />
-            <Text 
-              style={[
-                styles.tabText, 
-                { color: activeTab === 'following' ? theme.primary : theme.textSecondary }
-              ]}
+        keyExtractor={(item) => item.key}
+        renderItem={({ item }) => {
+          if (item.isNav) {
+            return (
+              <TouchableOpacity
+                style={[styles.tab, { marginRight: 16 }]}
+                onPress={() => navigation.navigate('Search')}
+              >
+                <Feather
+                  name={item.icon}
+                  size={16}
+                  color={theme.textSecondary}
+                />
+                <Text style={[styles.tabText, { color: theme.textSecondary }]}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          }
+          return (
+            <TouchableOpacity
+              style={[styles.tab, activeTab === item.key && styles.activeTab]}
+              onPress={() => setActiveTab(item.key)}
             >
-              Following
-            </Text>
-          </TouchableOpacity>
-        )}
-        
-        <TouchableOpacity 
-          style={[styles.tab, { marginRight: 16 }]}
-          onPress={() => navigation.navigate('Search')}
-        >
-          <Feather 
-            name="trending-up" 
-            size={16} 
-            color={theme.textSecondary} 
-          />
-          <Text 
-            style={[
-              styles.tabText, 
-              { color: theme.textSecondary }
-            ]}
-          >
-            Trending
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
+              <Feather
+                name={item.icon}
+                size={16}
+                color={activeTab === item.key ? theme.primary : theme.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.tabText,
+                  { color: activeTab === item.key ? theme.primary : theme.textSecondary }
+                ]}
+              >
+                {item.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        }}
+      />
     </View>
   );
 
   const renderLiveStories = () => {
     const liveStories = news.filter(item => item.isLive).slice(0, 10);
-    
+
     if (liveStories.length === 0) return null;
-    
+
     return (
       <View style={styles.liveStoriesContainer}>
         <View style={styles.sectionHeader}>
@@ -347,18 +296,18 @@ export default function HomeScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-        
+
         <FlatList
           horizontal
           data={liveStories}
           keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
           renderItem={({ item }) => (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.storyItem}
               onPress={() => handleNewsPress(item)}
             >
               <View style={styles.storyImageContainer}>
-                <Image 
+                <Image
                   source={{ uri: item.thumbnail || 'https://via.placeholder.com/150' }}
                   style={styles.storyImage}
                 />
@@ -378,6 +327,60 @@ export default function HomeScreen() {
     );
   };
 
+  // Combine header sections into one component for the FlatList header
+  const renderListHeader = () => (
+    <>
+      {renderFeaturedContent()}
+      {renderLiveStories()}
+      {location && (
+        <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
+          <ActiveRegionsPanel
+            refreshInterval={60000}
+            limit={5}
+            activeWithinMinutes={60}
+            onRegionSelect={(region) => {
+              console.log('Selected region:', region.name);
+            }}
+          />
+        </View>
+      )}
+      <View style={styles.newsFeedContainer}>
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            {activeTab === 'live'
+              ? 'Live News'
+              : activeTab === 'video'
+                ? 'Video Content'
+                : activeTab === 'following'
+                  ? 'From People You Follow'
+                  : 'Latest News'}
+          </Text>
+          {locationName && activeTab === 'all' && (
+            <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
+              News from your area
+            </Text>
+          )}
+        </View>
+      </View>
+    </>
+  );
+
+  const renderTrendingSection = () => (
+    <View style={[styles.trendingContainer, { backgroundColor: theme.isDark ? theme.backgroundSecondary : '#f8f9fa' }]}>
+      <View style={styles.sectionHeader}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          Trending Now
+        </Text>
+      </View>
+      <TrendingNewsStream
+        timeframe="lastHour"
+        refreshInterval={30000}
+        maxItems={5}
+        onNewsPress={handleNewsPress}
+      />
+    </View>
+  );
+
   if (loading && !refreshing) {
     return <LoadingIndicator />;
   }
@@ -385,8 +388,8 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.backgroundSecondary }]} edges={['top']}>
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor={theme.background} />
-      
-      <View style={[styles.header, { 
+
+      <View style={[styles.header, {
         backgroundColor: theme.background,
         borderBottomColor: theme.border
       }]}>
@@ -394,25 +397,25 @@ export default function HomeScreen() {
           <Text style={[styles.title, { color: theme.text }]}>NewsGeo</Text>
           {locationName && <LocationBadge location={locationName} />}
         </View>
-        
+
         <View style={styles.headerActions}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.iconButton}
             onPress={() => navigation.navigate('Search')}
           >
             <Feather name="search" size={22} color={theme.textSecondary} />
           </TouchableOpacity>
-          
+
           <ThemeToggle style={styles.themeToggle} />
         </View>
       </View>
-      
+
       {renderTabBar()}
-      
+
       {error ? (
         <View style={styles.errorContainer}>
           <Text style={[styles.errorText, { color: theme.danger }]}>{error}</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.retryButton, { backgroundColor: theme.primary }]}
             onPress={loadNews}
           >
@@ -420,91 +423,45 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        <ScrollView
+        <FlatList
+          data={filteredNews}
+          keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
+          renderItem={({ item, index }) => {
+            const freeLimit = newsData.meta?.freeLimit || 10;
+            const freemiumRestricted = !user && index >= freeLimit;
+            return (
+              <NewsCard
+                news={item}
+                onPress={() => handleNewsPress(item)}
+                freemiumRestricted={freemiumRestricted}
+              />
+            );
+          }}
           refreshControl={
-            <RefreshControl 
-              refreshing={refreshing} 
-              onRefresh={handleRefresh} 
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
               tintColor={theme.textSecondary}
               colors={[theme.primary]}
               progressBackgroundColor={theme.backgroundSecondary}
             />
           }
-          style={{ flex: 1 }}
+          ListHeaderComponent={renderListHeader}
+          ListFooterComponent={activeTab === 'all' ? renderTrendingSection() : null}
           contentContainerStyle={{ paddingBottom: 20 }}
-        >
-          {/* Featured live content */}
-          {renderFeaturedContent()}
-          
-          {/* Live stories */}
-          {renderLiveStories()}
-          
-          {/* Location-based sections */}
-          {location && (
-            <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
-              <ActiveRegionsPanel 
-                refreshInterval={60000}
-                limit={5}
-                activeWithinMinutes={60}
-                onRegionSelect={(region) => {
-                  console.log('Selected region:', region.name);
-                }}
-              />
-            </View>
-          )}
-          
-          {/* Main news feed section */}
-          <View style={styles.newsFeedContainer}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                {activeTab === 'live' ? 'Live News' : 
-                 activeTab === 'video' ? 'Video Content' :
-                 activeTab === 'following' ? 'From People You Follow' : 'Latest News'}
-              </Text>
-              {locationName && activeTab === 'all' && (
-                <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
-                  News from your area
-                </Text>
-              )}
-            </View>
-            
-            <NewsStream 
-              news={filteredNews} 
-              onNewsPress={handleNewsPress}
-              isAuthenticated={!!user}
-              freemiumMeta={newsData.meta}
-            />
-          </View>
-          
-          {/* Trending section */}
-          {activeTab === 'all' && (
-            <View style={[styles.trendingContainer, { backgroundColor: theme.isDark ? theme.backgroundSecondary : '#f8f9fa' }]}>
-              <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                  Trending Now
-                </Text>
-              </View>
-              
-              <TrendingNewsStream 
-                timeframe="lastHour"
-                refreshInterval={30000}
-                maxItems={5}
-                onNewsPress={handleNewsPress}
-              />
-            </View>
-          )}
-        </ScrollView>
+          showsVerticalScrollIndicator={false}
+        />
       )}
-      
+
       {!user && filteredNews.length > 10 && (
-        <View style={[styles.freemiumBanner, { 
+        <View style={[styles.freemiumBanner, {
           backgroundColor: theme.isDark ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.95)',
           borderTopColor: theme.border
         }]}>
           <Text style={[styles.freemiumTitle, { color: theme.text }]}>
             Sign in to see more content
           </Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.freemiumButton, { backgroundColor: theme.primary }]}
             onPress={handleSignInPress}
           >
@@ -546,17 +503,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
-  },
-  signInButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 8,
-  },
-  signInButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
   },
   themeToggle: {
     marginLeft: 8,
@@ -605,11 +551,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     backgroundColor: 'rgba(0,0,0,0.3)',
-    backgroundGradient: {
-      colors: ['rgba(0,0,0,0)', 'rgba(0,0,0,0.8)'],
-      start: { x: 0, y: 0 },
-      end: { x: 0, y: 1 },
-    },
   },
   featuredBadgeRow: {
     flexDirection: 'row',
@@ -727,6 +668,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
+  sectionSubtitle: {
+    fontSize: 14,
+    marginTop: 2,
+  },
   seeAllText: {
     fontSize: 14,
     fontWeight: '500',
@@ -779,10 +724,6 @@ const styles = StyleSheet.create({
   },
   newsFeedContainer: {
     marginTop: 16,
-  },
-  sectionSubtitle: {
-    fontSize: 14,
-    marginTop: 2,
   },
   trendingContainer: {
     marginTop: 24,
@@ -837,3 +778,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
+

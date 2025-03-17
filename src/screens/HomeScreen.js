@@ -134,12 +134,12 @@ export default function HomeScreen() {
     // For non-authenticated users, check if they're trying to access premium content
     if (!user && newsData.meta?.freemium && newsItem.premiumContent) {
       Alert.alert(
-        'Premium Content',
-        'Please sign in to access this news item.',
+        t('news.premiumContent'),
+        t('news.premiumContentMessage'),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('common.cancel'), style: 'cancel' },
           {
-            text: 'Sign In',
+            text: t('auth.signIn'),
             onPress: () => navigation.navigate('Auth')
           }
         ]
@@ -172,7 +172,7 @@ export default function HomeScreen() {
             <View style={styles.featuredBadgeRow}>
               <View style={styles.liveBadge}>
                 <View style={styles.liveIndicator} />
-                <Text style={styles.liveBadgeText}>LIVE</Text>
+                <Text style={styles.liveBadgeText}>{t('streaming.live')}</Text>
               </View>
               {locationName && (
                 <View style={styles.locationBadge}>
@@ -197,11 +197,11 @@ export default function HomeScreen() {
                   ) : (
                     <View style={[styles.authorImage, styles.authorInitial]}>
                       <Text style={styles.initialText}>
-                        {featuredLiveContent.author ? featuredLiveContent.author.charAt(0).toUpperCase() : 'U'}
+                        {featuredLiveContent.author ? featuredLiveContent.author.charAt(0).toUpperCase() : t('common.unknown', 'Unknown').charAt(0)}
                       </Text>
                     </View>
                   )}
-                  <Text style={styles.authorName}>{featuredLiveContent.author || 'Unknown'}</Text>
+                  <Text style={styles.authorName}>{featuredLiveContent.author || t('common.unknown', 'Unknown')}</Text>
                 </View>
 
                 <Text style={styles.featuredTime}>
@@ -226,11 +226,11 @@ export default function HomeScreen() {
     <View style={[styles.tabBar, { backgroundColor: theme.background }]}>
       <FlatList
         data={[
-          { key: 'all', icon: 'grid', label: 'All' },
-          { key: 'live', icon: 'radio', label: 'Live Now' },
-          { key: 'video', icon: 'film', label: 'Videos' },
-          ...(user ? [{ key: 'following', icon: 'users', label: 'Following' }] : []),
-          { key: 'search', icon: 'trending-up', label: 'Trending', isNav: true }
+          { key: 'all', icon: 'grid', label: t('news.tabLabels.all') },
+          { key: 'live', icon: 'radio', label: t('news.tabLabels.live') },
+          { key: 'video', icon: 'film', label: t('news.tabLabels.videos') },
+          ...(user ? [{ key: 'following', icon: 'users', label: t('news.tabLabels.following') }] : []),
+          { key: 'search', icon: 'trending-up', label: t('news.tabLabels.trending'), isNav: true }
         ]}
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -288,11 +288,11 @@ export default function HomeScreen() {
       <View style={styles.liveStoriesContainer}>
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>
-            Live Stories
+            {t('news.liveStories')}
           </Text>
           <TouchableOpacity onPress={() => setActiveTab('live')}>
             <Text style={[styles.seeAllText, { color: theme.primary }]}>
-              See All
+              {t('news.seeAll')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -316,7 +316,7 @@ export default function HomeScreen() {
                 </View>
               </View>
               <Text style={[styles.storyAuthor, { color: theme.text }]} numberOfLines={1}>
-                {item.author || 'Unknown'}
+                {item.author || t('common.unknown', 'Unknown')}
               </Text>
             </TouchableOpacity>
           )}
@@ -348,16 +348,16 @@ export default function HomeScreen() {
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>
             {activeTab === 'live'
-              ? 'Live News'
+              ? t('streaming.liveNow')
               : activeTab === 'video'
-                ? 'Video Content'
+                ? t('news.videoContent')
                 : activeTab === 'following'
-                  ? 'From People You Follow'
-                  : 'Latest News'}
+                  ? t('profile.following')
+                  : t('news.latest')}
           </Text>
           {locationName && activeTab === 'all' && (
             <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
-              News from your area
+              {t('news.nearby')}
             </Text>
           )}
         </View>
@@ -369,7 +369,7 @@ export default function HomeScreen() {
     <View style={[styles.trendingContainer, { backgroundColor: theme.isDark ? theme.backgroundSecondary : '#f8f9fa' }]}>
       <View style={styles.sectionHeader}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          Trending Now
+          {t('news.trendingNow')}
         </Text>
       </View>
       <TrendingNewsStream
@@ -394,7 +394,7 @@ export default function HomeScreen() {
         borderBottomColor: theme.border
       }]}>
         <View style={styles.titleContainer}>
-          <Text style={[styles.title, { color: theme.text }]}>NewsGeo</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{t('common.appName', 'NewsGeo')}</Text>
           {locationName && <LocationBadge location={locationName} />}
         </View>
 
@@ -419,7 +419,7 @@ export default function HomeScreen() {
             style={[styles.retryButton, { backgroundColor: theme.primary }]}
             onPress={loadNews}
           >
-            <Text style={styles.retryButtonText}>Retry</Text>
+            <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -459,13 +459,13 @@ export default function HomeScreen() {
           borderTopColor: theme.border
         }]}>
           <Text style={[styles.freemiumTitle, { color: theme.text }]}>
-            Sign in to see more content
+            {t('news.signInForMore')}
           </Text>
           <TouchableOpacity
             style={[styles.freemiumButton, { backgroundColor: theme.primary }]}
             onPress={handleSignInPress}
           >
-            <Text style={styles.freemiumButtonText}>Sign In</Text>
+            <Text style={styles.freemiumButtonText}>{t('auth.signIn')}</Text>
           </TouchableOpacity>
         </View>
       )}

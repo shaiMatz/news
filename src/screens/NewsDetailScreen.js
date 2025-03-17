@@ -17,6 +17,7 @@ import { Feather } from '@expo/vector-icons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import useLocalization from '../hooks/useLocalization';
 import VideoPlayer from '../components/VideoPlayer';
 import LocationBadge from '../components/LocationBadge';
 import ShareSheet from '../components/ShareSheet';
@@ -30,6 +31,7 @@ export default function NewsDetailScreen() {
   const { newsItem } = route.params || {};
   const { user } = useAuth();
   const { theme, isDarkMode } = useTheme();
+  const { t } = useLocalization();
   const [liked, setLiked] = useState(newsItem?.liked || false);
   const [likeCount, setLikeCount] = useState(newsItem?.likes || 0);
   const [comments, setComments] = useState([]);
@@ -71,7 +73,7 @@ export default function NewsDetailScreen() {
       setLikeCount(liked ? likeCount - 1 : likeCount + 1);
     } catch (error) {
       console.error('Failed to like news:', error);
-      Alert.alert('Error', 'Failed to like this news.');
+      Alert.alert(t('common.error', 'Error'), t('news.likeError', 'Failed to like this news.'));
     }
   };
 
@@ -115,7 +117,7 @@ export default function NewsDetailScreen() {
       }
     } catch (error) {
       console.error('Failed to submit comment:', error);
-      Alert.alert('Error', 'Failed to post your comment. Please try again.');
+      Alert.alert(t('common.error', 'Error'), t('news.commentError', 'Failed to post your comment. Please try again.'));
     } finally {
       setSubmittingComment(false);
     }
@@ -148,7 +150,7 @@ export default function NewsDetailScreen() {
           
           <Text style={[styles.title, { color: theme.text }]}>{newsItem.title}</Text>
           <Text style={[styles.authorName, { color: theme.textSecondary }]}>
-            By {newsItem.author}
+            {t('news.postedBy', {username: newsItem.author || t('common.unknown', 'Unknown')}, `By ${newsItem.author || 'Unknown'}`)}
           </Text>
           
           <View style={styles.actionRow}>
@@ -166,13 +168,13 @@ export default function NewsDetailScreen() {
                 { color: theme.textSecondary },
                 liked && [styles.likedText, { color: theme.danger }]
               ]}>
-                {likeCount} {likeCount === 1 ? 'Like' : 'Likes'}
+                {t('news.likes', {count: likeCount}, `${likeCount} ${likeCount === 1 ? 'Like' : 'Likes'}`)}
               </Text>
             </TouchableOpacity>
             
             <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
               <Feather name="share-2" size={20} color={theme.textSecondary} />
-              <Text style={[styles.actionText, { color: theme.textSecondary }]}>Share</Text>
+              <Text style={[styles.actionText, { color: theme.textSecondary }]}>{t('common.share', 'Share')}</Text>
             </TouchableOpacity>
           </View>
           
@@ -183,7 +185,7 @@ export default function NewsDetailScreen() {
           </Text>
           
           <View style={styles.commentsSection}>
-            <Text style={[styles.commentsTitle, { color: theme.text }]}>Comments</Text>
+            <Text style={[styles.commentsTitle, { color: theme.text }]}>{t('news.comments', 'Comments')}</Text>
             
             {!user ? (
               <TouchableOpacity 
@@ -194,7 +196,7 @@ export default function NewsDetailScreen() {
                 onPress={() => navigation.navigate('Auth')}
               >
                 <Text style={[styles.loginPromptText, { color: theme.primary }]}>
-                  Please login to view and post comments
+                  {t('news.loginToComment', 'Please login to view and post comments')}
                 </Text>
                 <Feather name="log-in" size={16} color={theme.primary} />
               </TouchableOpacity>
@@ -213,7 +215,7 @@ export default function NewsDetailScreen() {
                     >
                       <View style={styles.commentHeader}>
                         <Text style={[styles.commentAuthor, { color: theme.text }]}>
-                          {comment.author}
+                          {comment.author || t('common.unknown', 'Unknown')}
                         </Text>
                         <Text style={[styles.commentTime, { color: theme.textSecondary }]}>
                           {formatRelativeTime(comment.createdAt)}
@@ -226,7 +228,7 @@ export default function NewsDetailScreen() {
                   ))
                 ) : (
                   <Text style={[styles.noCommentsText, { color: theme.textSecondary }]}>
-                    No comments yet. Be the first to comment!
+                    {t('news.noComments', 'No comments yet. Be the first to comment!')}
                   </Text>
                 )}
                 
@@ -240,7 +242,7 @@ export default function NewsDetailScreen() {
                 ]}>
                   <TextInput
                     style={[styles.commentInput, { color: theme.text }]}
-                    placeholder="Add a comment..."
+                    placeholder={t('news.writeComment', 'Add a comment...')}
                     placeholderTextColor={theme.textSecondary}
                     value={commentText}
                     onChangeText={setCommentText}

@@ -1,5 +1,6 @@
 {
   "common": {
+    "appName": "NewsGeo",
     "loading": "Loading...",
     "error": "Error",
     "retry": "Try Again",
@@ -13,6 +14,7 @@
     "next": "Next",
     "done": "Done",
     "confirm": "Confirm",
+    "unknown": "Unknown",
     "recently": "recently"
   },
   "auth": {
@@ -33,7 +35,18 @@
     "registerSuccess": "Registration successful!",
     "logoutSuccess": "Logout successful!",
     "loginRequired": "Login Required",
-    "loginToAccess": "Please login to access this feature"
+    "loginToAccess": "Please login to access this feature",
+    "subtitle": "Your personal news stream, location-aware and always fresh",
+    "exploreFeatures": "Explore Features",
+    "hero": {
+      "title": "Location-based News",
+      "description": "Get news that matters to you, based on your location and interests. Stay informed about what's happening around you."
+    },
+    "features": {
+      "streaming": "Live Streaming",
+      "notifications": "Notifications",
+      "upload": "Upload News"
+    }
   },
   "profile": {
     "profile": "Profile",
@@ -97,6 +110,8 @@
     "postedAt": "Posted {{timeAgo}}",
     "editedAt": "Edited {{timeAgo}}",
     "noNewsFound": "No news found",
+    "likeError": "Failed to like this news.",
+    "commentError": "Failed to post your comment. Please try again.",
     "searchResults": "Search Results",
     "searchResultsFor": "Search results for '{{query}}'",
     "clearSearch": "Clear Search",
@@ -115,7 +130,21 @@
     "category_sports": "Sports",
     "category_science": "Science",
     "category_health": "Health",
-    "category_other": "Other"
+    "category_other": "Other",
+    "liveStories": "Live Stories",
+    "seeAll": "See All",
+    "trendingNow": "Trending Now",
+    "tabLabels": {
+      "all": "All",
+      "live": "Live Now",
+      "videos": "Videos",
+      "following": "Following",
+      "trending": "Trending"
+    },
+    "videoContent": "Video Content",
+    "signInForMore": "Sign in to see more content",
+    "premiumContent": "Premium Content",
+    "premiumContentMessage": "Please sign in to access this news item."
   },
   "streaming": {
     "liveNow": "LIVE NOW",

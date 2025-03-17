@@ -219,12 +219,20 @@
     container.className = 'language-selector';
     container.style.position = 'fixed';
     container.style.top = '10px';
-    container.style.right = '10px';
     container.style.zIndex = '1000';
     container.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
     container.style.borderRadius = '4px';
     container.style.padding = '5px';
     container.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
+    
+    // Position based on RTL or LTR
+    if (window.i18n.isRTL()) {
+      container.style.left = '10px';
+      container.style.right = 'auto';
+    } else {
+      container.style.right = '10px';
+      container.style.left = 'auto';
+    }
     
     // Create the select element
     const select = document.createElement('select');

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import useLocalization from '../hooks/useLocalization';
 import ErrorMessage from './ErrorMessage';
 import { ErrorTypes, handleError } from '../utils/errorUtils';
 import { ApiError } from '../services/api';
@@ -28,6 +29,7 @@ export default function AuthForm() {
   const [error, setError] = useState(null);
   const [errorType, setErrorType] = useState(null);
   const { login, register, loading, error: authError, socialLogin } = useAuth();
+  const { safeT, getTextAlignStyle, getDirectionStyle } = useLocalization();
 
   const toggleForm = () => {
     setIsLogin(!isLogin);
@@ -60,7 +62,7 @@ export default function AuthForm() {
   const checkConnectivity = async () => {
     const online = await isOnline();
     if (!online) {
-      setError('Please check your internet connection and try again.');
+      setError(safeT('connectivity.checkConnection'));
       setErrorType(ErrorTypes.NETWORK);
       return false;
     }
@@ -175,36 +177,37 @@ export default function AuthForm() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.formTypeSelector}>
+      <View style={[styles.formTypeSelector, getDirectionStyle()]}>
         <TouchableOpacity
           style={[styles.formTypeButton, isLogin && styles.activeFormType]}
           onPress={() => setIsLogin(true)}
         >
-          <Text style={[styles.formTypeText, isLogin && styles.activeFormTypeText]}>
-            Login
+          <Text style={[styles.formTypeText, getTextAlignStyle(), isLogin && styles.activeFormTypeText]}>
+            {safeT('auth.login')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.formTypeButton, !isLogin && styles.activeFormType]}
           onPress={() => setIsLogin(false)}
         >
-          <Text style={[styles.formTypeText, !isLogin && styles.activeFormTypeText]}>
-            Register
+          <Text style={[styles.formTypeText, getTextAlignStyle(), !isLogin && styles.activeFormTypeText]}>
+            {safeT('auth.register')}
           </Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.form}>
+      <View style={[styles.form, getContainerStyle()]}>
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Username</Text>
-          <View style={styles.inputContainer}>
+          <Text style={[styles.label, getTextAlignStyle()]}>{safeT('auth.username')}</Text>
+          <View style={[styles.inputContainer, getDirectionStyle()]}>
             <Feather name="user" size={20} color="#94A3B8" style={styles.inputIcon} />
             <TextInput
-              style={styles.input}
-              placeholder="Enter your username"
+              style={[styles.input, getTextAlignStyle()]}
+              placeholder={safeT('auth.username')}
               value={username}
               onChangeText={handleUsernameChange}
               autoCapitalize="none"
+              textAlign={getTextAlignStyle().textAlign}
             />
           </View>
         </View>
@@ -230,31 +233,33 @@ export default function AuthForm() {
 
         {!isLogin && (
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email</Text>
-            <View style={styles.inputContainer}>
+            <Text style={[styles.label, getTextAlignStyle()]}>{safeT('auth.email')}</Text>
+            <View style={[styles.inputContainer, getDirectionStyle()]}>
               <Feather name="mail" size={20} color="#94A3B8" style={styles.inputIcon} />
               <TextInput
-                style={styles.input}
-                placeholder="Enter your email"
+                style={[styles.input, getTextAlignStyle()]}
+                placeholder={safeT('auth.emailPlaceholder')}
                 value={email}
                 onChangeText={handleEmailChange}
                 autoCapitalize="none"
                 keyboardType="email-address"
+                textAlign={getTextAlignStyle().textAlign}
               />
             </View>
           </View>
         )}
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Password</Text>
-          <View style={styles.inputContainer}>
+          <Text style={[styles.label, getTextAlignStyle()]}>{safeT('auth.password')}</Text>
+          <View style={[styles.inputContainer, getDirectionStyle()]}>
             <Feather name="lock" size={20} color="#94A3B8" style={styles.inputIcon} />
             <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
+              style={[styles.input, getTextAlignStyle()]}
+              placeholder={safeT('auth.passwordPlaceholder')}
               value={password}
               onChangeText={handlePasswordChange}
               secureTextEntry={!showPassword}
+              textAlign={getTextAlignStyle().textAlign}
             />
             <TouchableOpacity
               style={styles.passwordToggle}
@@ -270,8 +275,8 @@ export default function AuthForm() {
         </View>
 
         {isLogin && (
-          <TouchableOpacity style={styles.forgotPassword}>
-            <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+          <TouchableOpacity style={[styles.forgotPassword, { alignSelf: getTextAlignStyle().textAlign === 'right' ? 'flex-start' : 'flex-end' }]}>
+            <Text style={[styles.forgotPasswordText, getTextAlignStyle()]}>{safeT('auth.forgotPassword')}</Text>
           </TouchableOpacity>
         )}
 
@@ -283,44 +288,44 @@ export default function AuthForm() {
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.submitButtonText}>
-              {isLogin ? "Login" : "Create Account"}
+            <Text style={[styles.submitButtonText, getTextAlignStyle()]}>
+              {isLogin ? safeT('auth.login') : safeT('auth.createAccount')}
             </Text>
           )}
         </TouchableOpacity>
 
         <View style={styles.socialLoginContainer}>
-          <Text style={styles.socialLoginText}>Or continue with</Text>
-          <View style={styles.socialButtonsContainer}>
+          <Text style={[styles.socialLoginText, getTextAlignStyle()]}>{safeT('auth.continueWith')}</Text>
+          <View style={[styles.socialButtonsContainer, getDirectionStyle()]}>
             <TouchableOpacity
-              style={styles.socialButton}
+              style={[styles.socialButton, getDirectionStyle()]}
               onPress={() => handleSocialLogin('google')}
               disabled={loading}
             >
               <Feather name="mail" size={20} color="#EA4335" />
-              <Text style={styles.socialButtonText}>Google</Text>
+              <Text style={[styles.socialButtonText, getTextAlignStyle()]}>{safeT('auth.google')}</Text>
             </TouchableOpacity>
             
             {Platform.OS === 'ios' && (
               <TouchableOpacity
-                style={styles.socialButton}
+                style={[styles.socialButton, getDirectionStyle()]}
                 onPress={() => handleSocialLogin('apple')}
                 disabled={loading}
               >
                 <Feather name="smartphone" size={20} color="#000000" />
-                <Text style={styles.socialButtonText}>Apple</Text>
+                <Text style={[styles.socialButtonText, getTextAlignStyle()]}>{safeT('auth.apple')}</Text>
               </TouchableOpacity>
             )}
           </View>
         </View>
         
-        <View style={styles.switchFormContainer}>
-          <Text style={styles.switchFormText}>
-            {isLogin ? "Don't have an account?" : "Already have an account?"}
+        <View style={[styles.switchFormContainer, getDirectionStyle()]}>
+          <Text style={[styles.switchFormText, getTextAlignStyle()]}>
+            {isLogin ? safeT('auth.noAccount') : safeT('auth.haveAccount')}
           </Text>
           <TouchableOpacity onPress={toggleForm}>
-            <Text style={styles.switchFormLink}>
-              {isLogin ? "Register" : "Login"}
+            <Text style={[styles.switchFormLink, getTextAlignStyle()]}>
+              {isLogin ? safeT('auth.register') : safeT('auth.login')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -424,7 +429,7 @@ const styles = StyleSheet.create({
   },
   switchFormText: {
     color: '#64748B',
-    marginRight: 4,
+    marginHorizontal: 4,
   },
   switchFormLink: {
     color: '#2563EB',
@@ -459,7 +464,7 @@ const styles = StyleSheet.create({
     minWidth: 140,
   },
   socialButtonText: {
-    marginLeft: 8,
+    marginHorizontal: 8,
     fontSize: 14,
     fontWeight: '600',
     color: '#334155',

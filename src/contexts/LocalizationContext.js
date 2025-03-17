@@ -106,6 +106,11 @@ export function LocalizationProvider({ children }) {
     }
   };
 
+  // Container style for layout containers
+  const getContainerStyle = () => ({
+    ...(isRTL ? { paddingRight: 0, paddingLeft: 16 } : { paddingLeft: 0, paddingRight: 16 })
+  });
+
   // Define context value
   const contextValue = {
     isLoading,
@@ -114,7 +119,7 @@ export function LocalizationProvider({ children }) {
     setLanguage: setAppLanguage,
     getDirectionStyle,
     getTextAlignStyle,
-
+    getContainerStyle,
   };
 
   return (

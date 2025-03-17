@@ -9,7 +9,22 @@ import { useLocalizationContext } from '../contexts/LocalizationContext';
  */
 export default function useLocalization() {
   const { t, i18n } = useTranslation();
-  const { language, isRTL, setLanguage } = useLocalizationContext();
+  const { language, isRTL, setLanguage, isLoading } = useLocalizationContext();
+  
+  /**
+   * Safe translation function that handles loading state
+   * to prevent UI breaking when translations aren't ready
+   * 
+   * @param {string} key - Translation key
+   * @param {Object} options - Translation options
+   * @returns {string} Translated string or fallback
+   */
+  const safeT = (key, options = {}) => {
+    if (isLoading) {
+      return key.split('.').pop(); // Return the last part of the key as fallback
+    }
+    return t(key, options);
+  };
 
   /**
    * Change the application language
@@ -91,9 +106,11 @@ export default function useLocalization() {
 
   return {
     t,
+    safeT,
     i18n,
     language,
     isRTL,
+    isLoading,
     changeLanguage,
     getCurrentLanguage,
     isRTLLanguage,

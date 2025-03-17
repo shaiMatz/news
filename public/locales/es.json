@@ -33,7 +33,18 @@
     "registerSuccess": "¡Registro exitoso!",
     "logoutSuccess": "¡Cierre de sesión exitoso!",
     "loginRequired": "Inicio de sesión requerido",
-    "loginToAccess": "Por favor inicia sesión para acceder a esta función"
+    "loginToAccess": "Por favor inicia sesión para acceder a esta función",
+    "subtitle": "Tu flujo de noticias personal, consciente de la ubicación y siempre actualizado",
+    "exploreFeatures": "Explorar funciones",
+    "hero": {
+      "title": "Noticias basadas en ubicación",
+      "description": "Recibe noticias que te importan, basadas en tu ubicación e intereses. Mantente informado sobre lo que está sucediendo a tu alrededor."
+    },
+    "features": {
+      "streaming": "Transmisión en vivo",
+      "notifications": "Notificaciones",
+      "upload": "Subir noticias"
+    }
   },
   "profile": {
     "profile": "Perfil",
@@ -115,7 +126,21 @@
     "category_sports": "Deportes",
     "category_science": "Ciencia",
     "category_health": "Salud",
-    "category_other": "Otro"
+    "category_other": "Otro",
+    "liveStories": "Historias en vivo",
+    "seeAll": "Ver todo",
+    "trendingNow": "Tendencias ahora",
+    "tabLabels": {
+      "all": "Todo",
+      "live": "En vivo ahora",
+      "videos": "Videos",
+      "following": "Siguiendo",
+      "trending": "Tendencias"
+    },
+    "videoContent": "Contenido de video",
+    "signInForMore": "Inicia sesión para ver más contenido",
+    "premiumContent": "Contenido Premium",
+    "premiumContentMessage": "Inicia sesión para acceder a esta noticia."
   },
   "streaming": {
     "liveNow": "EN VIVO AHORA",

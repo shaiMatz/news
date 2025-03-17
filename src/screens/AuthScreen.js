@@ -14,10 +14,13 @@ import { Feather } from '@expo/vector-icons';
 import AuthForm from '../components/AuthForm';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import useLocalization from '../hooks/useLocalization';
+import LanguageSelector from '../components/LanguageSelector';
 
 export default function AuthScreen() {
   const { user } = useAuth();
   const navigation = useNavigation();
+  const { safeT, getContainerStyle, getDirectionStyle, getTextAlignStyle } = useLocalization();
 
   // Redirect to home if already logged in
   useEffect(() => {
@@ -36,41 +39,43 @@ export default function AuthScreen() {
         style={styles.keyboardAvoidingView}
       >
         <ScrollView contentContainerStyle={styles.scrollView}>
-          <View style={styles.twoColumnLayout}>
+          <View style={[styles.twoColumnLayout, getContainerStyle()]}>
             <View style={styles.formColumn}>
-              <Text style={styles.logo}>NewsGeo</Text>
-              <Text style={styles.subtitle}>Your personal news stream, location-aware and always fresh</Text>
+              <View style={[styles.headerSection, getDirectionStyle()]}>
+                <Text style={[styles.logo, getTextAlignStyle()]}>NewsGeo</Text>
+                <LanguageSelector type="inline" showLabel={false} />
+              </View>
+              <Text style={[styles.subtitle, getTextAlignStyle()]}>{safeT('auth.subtitle')}</Text>
               <AuthForm />
             </View>
             
             <View style={styles.heroColumn}>
               <View style={styles.heroContent}>
                 <Feather name="map-pin" size={48} color="#2563EB" style={styles.heroIcon} />
-                <Text style={styles.heroTitle}>Location-based News</Text>
-                <Text style={styles.heroText}>
-                  Get news that matters to you, based on your location and interests.
-                  Stay informed about what's happening around you.
+                <Text style={[styles.heroTitle, getTextAlignStyle()]}>{safeT('auth.hero.title')}</Text>
+                <Text style={[styles.heroText, getTextAlignStyle()]}>
+                  {safeT('auth.hero.description')}
                 </Text>
                 
-                <View style={styles.featureRow}>
+                <View style={[styles.featureRow, getDirectionStyle()]}>
                   <View style={styles.featureItem}>
                     <Feather name="video" size={24} color="#2563EB" />
-                    <Text style={styles.featureTitle}>Live Streaming</Text>
+                    <Text style={[styles.featureTitle, getTextAlignStyle()]}>{safeT('auth.features.streaming')}</Text>
                   </View>
                   
                   <View style={styles.featureItem}>
                     <Feather name="bell" size={24} color="#2563EB" />
-                    <Text style={styles.featureTitle}>Notifications</Text>
+                    <Text style={[styles.featureTitle, getTextAlignStyle()]}>{safeT('auth.features.notifications')}</Text>
                   </View>
                   
                   <View style={styles.featureItem}>
                     <Feather name="upload" size={24} color="#2563EB" />
-                    <Text style={styles.featureTitle}>Upload News</Text>
+                    <Text style={[styles.featureTitle, getTextAlignStyle()]}>{safeT('auth.features.upload')}</Text>
                   </View>
                 </View>
                 
-                <TouchableOpacity style={styles.exploreButton}>
-                  <Text style={styles.exploreButtonText}>Explore Features</Text>
+                <TouchableOpacity style={[styles.exploreButton, getDirectionStyle()]}>
+                  <Text style={[styles.exploreButtonText, getTextAlignStyle()]}>{safeT('auth.exploreFeatures')}</Text>
                   <Feather name="arrow-right" size={20} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
@@ -92,6 +97,12 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flexGrow: 1,
+  },
+  headerSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   twoColumnLayout: {
     flex: 1,
@@ -170,6 +181,6 @@ const styles = StyleSheet.create({
   exploreButtonText: {
     color: '#FFFFFF',
     fontWeight: 'bold',
-    marginRight: 8,
+    marginHorizontal: 8,
   },
 });

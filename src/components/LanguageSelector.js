@@ -26,7 +26,7 @@ export default function LanguageSelector({
   type = 'dropdown',
   onLanguageChange = null
 }) {
-  const { language, changeLanguage, getAvailableLanguages, t } = useLocalization();
+  const { language, changeLanguage, getAvailableLanguages, safeT } = useLocalization();
   const { isRTL, getDirectionStyle, getTextAlignStyle } = useLocalizationContext();
   const [modalVisible, setModalVisible] = useState(false);
   const languages = getAvailableLanguages();
@@ -89,7 +89,7 @@ export default function LanguageSelector({
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <View style={[styles.modalHeader, getDirectionStyle()]}>
-                <Text style={[styles.modalTitle, getTextAlignStyle()]}>{t('profile.language')}</Text>
+                <Text style={[styles.modalTitle, getTextAlignStyle()]}>{safeT('profile.language')}</Text>
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
                   <Feather name="x" size={24} color="#64748B" />
                 </TouchableOpacity>

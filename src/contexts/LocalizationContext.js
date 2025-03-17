@@ -1,8 +1,9 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
-import { I18nManager, Platform, Alert } from 'react-native';
+import { I18nManager, Platform, Alert, AppRegistry } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import i18n from '../localization/i18n';
 import { changeLanguage as i18nChangeLanguage } from '../localization/i18n';
+import { reloadAsync } from 'expo-updates';
 
 // Create the context
 const LocalizationContext = createContext();
@@ -23,7 +24,7 @@ export function LocalizationProvider({ children }) {
   const [isRTL, setIsRTL] = useState(false);
   const [error, setError] = useState(null);
   const [loadRetries, setLoadRetries] = useState(0);
-  
+
   /**
    * Get style object with RTL-aware flexDirection
    * 
@@ -35,7 +36,7 @@ export function LocalizationProvider({ children }) {
       flexDirection: isRTL !== reverse ? 'row-reverse' : 'row',
     };
   }, [isRTL]);
-  
+
   /**
    * Get style object with RTL-aware text alignment
    * 
@@ -57,8 +58,8 @@ export function LocalizationProvider({ children }) {
   const getContainerStyle = useCallback(() => {
     return {
       direction: isRTL ? 'rtl' : 'ltr',
-      ...(isRTL 
-        ? { paddingRight: 0, paddingLeft: 16, alignItems: 'flex-end' } 
+      ...(isRTL
+        ? { paddingRight: 0, paddingLeft: 16, alignItems: 'flex-end' }
         : { paddingLeft: 0, paddingRight: 16, alignItems: 'flex-start' })
     };
   }, [isRTL]);
@@ -71,36 +72,36 @@ export function LocalizationProvider({ children }) {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       // Initialize i18n
       const i18nInstance = await i18n();
-      
+
       // Get the current language (from AsyncStorage or device)
       const currentLang = i18nInstance.language || 'en';
       setLanguage(currentLang);
-      
+
       // Check if the language is RTL
       const isRtl = RTL_LANGUAGES.includes(currentLang);
-      
+
       // Set RTL flag
       setIsRTL(isRtl);
-      
+
       // Set React Native's direction
       await enableRTL(isRtl);
-      
+
       // Reset retry count on success
       setLoadRetries(0);
-      
+
       return true;
     } catch (error) {
       console.error('Error loading language:', error);
       setError(error);
-      
+
       // If failed due to network issues and within retry limit, attempt again
       if (retry < MAX_TRANSLATION_LOAD_RETRIES) {
         console.log(`Retrying language load (${retry + 1}/${MAX_TRANSLATION_LOAD_RETRIES})...`);
         setLoadRetries(retry + 1);
-        
+
         // Exponential backoff for retries (300ms, 900ms, 2700ms)
         const delay = 300 * Math.pow(3, retry);
         setTimeout(() => loadLanguage(retry + 1), delay);
@@ -109,7 +110,7 @@ export function LocalizationProvider({ children }) {
         if (Platform.OS === 'web') {
           console.warn('Translation loading failed after multiple attempts. You may need to refresh the page.');
         }
-        
+
         // Fall back to English on failure
         if (language !== 'en') {
           setLanguage('en');
@@ -117,7 +118,7 @@ export function LocalizationProvider({ children }) {
           await enableRTL(false);
         }
       }
-      
+
       return false;
     } finally {
       setIsLoading(false);
@@ -138,42 +139,49 @@ export function LocalizationProvider({ children }) {
   const setAppLanguage = async (newLanguage) => {
     try {
       if (newLanguage === language) return true;
-      
+
       setIsLoading(true);
       setError(null);
-      
+
       // Change language in i18n
       const success = await i18nChangeLanguage(newLanguage);
       if (!success) {
         throw new Error(`Failed to change language to ${newLanguage}`);
       }
-      
+
       // Set language state
       setLanguage(newLanguage);
-      
+
       // Check if the language is RTL
       const isRtl = RTL_LANGUAGES.includes(newLanguage);
-      
+
       // If switching between RTL and LTR, we need special handling
       const isRTLSwitch = isRTL !== isRtl;
-      
+
       // Set RTL flag
       setIsRTL(isRtl);
-      
+
       // Set React Native's direction
       await enableRTL(isRtl);
-      
+
       // If this was an RTL-LTR switch on web, we may need to reload
       if (isRTLSwitch && Platform.OS === 'web') {
         // In real app we might want to reload the page here
         console.log('Switched RTL/LTR direction. Page may need to reload for proper layout.');
       }
-      
+
+      // reload the app
+      if (Platform.OS === 'web') {
+        window.location.reload();
+      } else {
+        await reloadAsync();
+      }
+
       return true;
     } catch (error) {
       console.error('Error changing language:', error);
       setError(error);
-      
+
       // Fall back to existing language
       return false;
     } finally {
@@ -194,12 +202,10 @@ export function LocalizationProvider({ children }) {
         // Set React Native's direction
         I18nManager.allowRTL(enable);
         I18nManager.forceRTL(enable);
-        
+
         // Store the RTL preference
         await AsyncStorage.setItem('app-rtl', String(enable));
-        
-        // Note: In a real app, we might need to restart the app
-        // or reload the page for RTL changes to fully take effect
+
       } catch (error) {
         console.error('Error setting RTL:', error);
       }

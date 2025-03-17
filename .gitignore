@@ -4,3 +4,23 @@
 
 !/**/package.json
 .env
+# react-native-config codegen
+ios/tmp.xcconfig
+
+# Expo
+.expo
+.expo/*
+.expo/**/*
+.expo/**/**/*
+
+# React Native
+android
+android/*
+android/**/*
+android/**/**/*
+
+# React Native
+ios
+ios/*
+ios/**/*
+ios/**/**/*

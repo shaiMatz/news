@@ -1,4 +1,4 @@
-import { Platform, NetInfo } from 'react-native';
+import { Platform } from 'react-native';
 import { ErrorTypes, logError, getErrorType, getUserFriendlyMessage } from '../utils/errorUtils';
 
 // Determine if we're running on Replit or locally
@@ -11,8 +11,8 @@ const isReplit = typeof window !== 'undefined' &&
 const API_HOST = isReplit 
   ? window.location.origin
   : Platform.OS !== 'android'
-    ? 'http://localhost:5000'
-    : 'http://172.20.10.5:5000'; // Android emulator IP for localhost
+    ? 'http://localhost:8080'
+    : 'http://172.20.10.5:8080'; // Android emulator IP for localhost
 
 
 /**
@@ -207,7 +207,7 @@ async function apiRequest(endpoint, method = 'GET', data = null, customHeaders =
     }
     
     // If it's already an ApiError, just throw it
-    if (error instanceof ApiError) {
+    if (error && error.name === 'ApiError') {
       throw error;
     }
     
@@ -471,14 +471,14 @@ function getWebSocketBaseURL() {
 
   // Handle different platforms correctly
   if (Platform.OS === 'android') {
-    return 'ws://10.0.2.2:5000'; // Android emulator
+    return 'ws://10.0.2.2:8080'; // Android emulator
   }
 
   if (Platform.OS === 'ios') {
-    return 'ws://localhost:5000'; // iOS simulator
+    return 'ws://localhost:8080'; // iOS simulator
   }
 
-  return 'ws://172.20.10.5:5000';
+  return 'ws://172.20.10.5:8080';
 }
 
 export function getWebSocketUrl(params = {}) {

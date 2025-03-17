@@ -17,12 +17,13 @@ const logger = require('./utils/logger').createLogger('server');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8080;
 const httpServer = createServer(app);
+const origin = ['http://localhost:3000', 'http://0.0.0.0:3000', 'http://localhost:8081', 'http://0.0.0.0:8081'];
 
 // Configure CORS and JSON body parsing
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://0.0.0.0:3000'], // React Native client origin
+  origin: origin,
   credentials: true
 }));
 app.use(bodyParser.json());
@@ -79,7 +80,7 @@ const activeStreams = new Map();
 // Set up Socket.IO for structured real-time events
 const io = new Server(httpServer, {
   cors: {
-    origin: ['http://localhost:3000', 'http://0.0.0.0:3000'],
+    origin: origin,
     credentials: true
   },
   transports: ['websocket', 'polling']

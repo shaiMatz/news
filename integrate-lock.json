@@ -1,0 +1,261 @@
+{
+  "lockfileVersion": 1,
+  "packages": {
+    "@babel/core": {
+      "version": "^7.20.0",
+      "integrated": false
+    },
+    "@expo/metro-config": {
+      "version": "~0.19.0",
+      "integrated": false
+    },
+    "@expo/metro-runtime": {
+      "version": "~4.0.1",
+      "integrated": false
+    },
+    "@expo/prebuild-config": {
+      "version": "~8.0.0",
+      "integrated": false
+    },
+    "@react-native-async-storage/async-storage": {
+      "version": "^2.1.2",
+      "integrated": false
+    },
+    "@react-native-community/cli-server-api": {
+      "version": "^17.0.0",
+      "integrated": false
+    },
+    "@react-native-community/netinfo": {
+      "version": "^11.4.1",
+      "integrated": false
+    },
+    "@react-navigation/bottom-tabs": {
+      "version": "^7.2.1",
+      "integrated": false
+    },
+    "@react-navigation/native": {
+      "version": "^7.0.15",
+      "integrated": false
+    },
+    "@react-navigation/stack": {
+      "version": "^7.1.2",
+      "integrated": false
+    },
+    "@tanstack/react-query": {
+      "version": "^5.67.2",
+      "integrated": false
+    },
+    "@types/react": {
+      "version": "~18.3.12",
+      "integrated": false
+    },
+    "bcrypt": {
+      "version": "^5.1.1",
+      "integrated": false
+    },
+    "body-parser": {
+      "version": "^1.20.3",
+      "integrated": false
+    },
+    "concurrently": {
+      "version": "^9.1.2",
+      "integrated": false
+    },
+    "cookie-parser": {
+      "version": "^1.4.7",
+      "integrated": false
+    },
+    "cors": {
+      "version": "^2.8.5",
+      "integrated": false
+    },
+    "cosmiconfig": {
+      "version": "^9.0.0",
+      "integrated": false
+    },
+    "csurf": {
+      "version": "^1.11.0",
+      "integrated": false
+    },
+    "debug": {
+      "version": "^4.4.0",
+      "integrated": false
+    },
+    "dotenv": {
+      "version": "^16.4.7",
+      "integrated": false
+    },
+    "expo": {
+      "version": "^52.0.37",
+      "integrated": false
+    },
+    "expo-av": {
+      "version": "^15.0.2",
+      "integrated": false
+    },
+    "expo-constants": {
+      "version": "^17.0.8",
+      "integrated": false
+    },
+    "expo-image-picker": {
+      "version": "^16.0.6",
+      "integrated": false
+    },
+    "expo-location": {
+      "version": "~18.0.7",
+      "integrated": false
+    },
+    "expo-notifications": {
+      "version": "^0.29.13",
+      "integrated": false
+    },
+    "expo-permissions": {
+      "version": "^14.4.0",
+      "integrated": false
+    },
+    "expo-splash-screen": {
+      "version": "~0.29.22",
+      "integrated": false
+    },
+    "expo-status-bar": {
+      "version": "~2.0.1",
+      "integrated": false
+    },
+    "express": {
+      "version": "^4.21.2",
+      "integrated": false
+    },
+    "express-rate-limit": {
+      "version": "^7.5.0",
+      "integrated": false
+    },
+    "express-session": {
+      "version": "^1.18.1",
+      "integrated": false
+    },
+    "express-validator": {
+      "version": "^7.2.1",
+      "integrated": false
+    },
+    "helmet": {
+      "version": "^8.0.0",
+      "integrated": false
+    },
+    "i18next": {
+      "version": "^24.2.3",
+      "integrated": false
+    },
+    "jsonwebtoken": {
+      "version": "^9.0.2",
+      "integrated": false
+    },
+    "memorystore": {
+      "version": "^1.6.7",
+      "integrated": false
+    },
+    "metro": {
+      "version": "^0.81.0",
+      "integrated": false
+    },
+    "metro-config": {
+      "version": "^0.81.0",
+      "integrated": false
+    },
+    "metro-react-native-babel-transformer": {
+      "version": "^0.77.0",
+      "integrated": false
+    },
+    "metro-resolver": {
+      "version": "^0.81.0",
+      "integrated": false
+    },
+    "mysql2": {
+      "version": "^3.13.0",
+      "integrated": false
+    },
+    "node-fetch": {
+      "version": "^3.3.2",
+      "integrated": false
+    },
+    "passport": {
+      "version": "^0.7.0",
+      "integrated": false
+    },
+    "passport-local": {
+      "version": "^1.0.0",
+      "integrated": false
+    },
+    "pg": {
+      "version": "^8.13.3",
+      "integrated": false
+    },
+    "react": {
+      "version": "18.3.1",
+      "integrated": false
+    },
+    "react-dom": {
+      "version": "18.3.1",
+      "integrated": false
+    },
+    "react-i18next": {
+      "version": "^15.4.1",
+      "integrated": false
+    },
+    "react-native": {
+      "version": "0.76.7",
+      "integrated": false
+    },
+    "react-native-config": {
+      "version": "^1.5.5",
+      "integrated": true
+    },
+    "react-native-dotenv": {
+      "version": "^3.4.11",
+      "integrated": false
+    },
+    "react-native-gesture-handler": {
+      "version": "~2.20.2",
+      "integrated": false
+    },
+    "react-native-safe-area-context": {
+      "version": "4.12.0",
+      "integrated": false
+    },
+    "react-native-screens": {
+      "version": "~4.4.0",
+      "integrated": false
+    },
+    "react-native-web": {
+      "version": "~0.19.13",
+      "integrated": false
+    },
+    "sequelize": {
+      "version": "^6.37.6",
+      "integrated": false
+    },
+    "socket.io": {
+      "version": "^4.8.1",
+      "integrated": false
+    },
+    "socket.io-client": {
+      "version": "^4.8.1",
+      "integrated": false
+    },
+    "typescript": {
+      "version": "^5.3.3",
+      "integrated": false
+    },
+    "vite": {
+      "version": "^6.2.1",
+      "integrated": false
+    },
+    "wouter": {
+      "version": "^3.6.0",
+      "integrated": false
+    },
+    "ws": {
+      "version": "^8.18.1",
+      "integrated": false
+    }
+  }
+}

@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F5F9',
   },
   textContent: {
-    padding: l6,
+    padding: 16,
   },
   description: {
     fontSize: 16,

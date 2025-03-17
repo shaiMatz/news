@@ -5,6 +5,14 @@
 
 import { Platform } from 'react-native';
 import { ApiError, ErrorTypes } from '../utils/errorUtils';
+import Config from 'react-native-config';
+
+const GOOGLE_CLIENT_ID = Config.GOOGLE_CLIENT_ID || '';
+const GOOGLE_CLIENT_SECRET = Config.GOOGLE_CLIENT_SECRET || '';
+const APPLE_CLIENT_ID = Config.APPLE_CLIENT_ID || '';
+const APPLE_TEAM_ID = Config.APPLE_TEAM_ID || '';
+console.log('Google Client ID:', GOOGLE_CLIENT_ID);
+console.log('Apple Client ID:', APPLE_CLIENT_ID);
 
 /**
  * Get Google authentication token
@@ -15,7 +23,7 @@ import { ApiError, ErrorTypes } from '../utils/errorUtils';
  */
 export async function getGoogleAuthToken() {
   // Check for required environment variables
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
     throw new ApiError(
       'Missing Google API keys',
       0,
@@ -28,7 +36,7 @@ export async function getGoogleAuthToken() {
     // In a real implementation, this would use the Google SDK to authenticate
     // and return a valid token
     console.log('Getting Google auth token with credentials...');
-    
+
     // Request proper API keys
     return await new Promise((resolve, reject) => {
       // This is where we would use the Google SignIn SDK
@@ -41,7 +49,7 @@ export async function getGoogleAuthToken() {
       ));
     });
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (error && error.name === 'ApiError') {
       throw error;
     }
     throw new ApiError(
@@ -72,7 +80,7 @@ export async function getAppleAuthToken() {
   }
 
   // Check for required environment variables
-  if (!process.env.APPLE_CLIENT_ID || !process.env.APPLE_TEAM_ID) {
+  if (!APPLE_CLIENT_ID || !APPLE_TEAM_ID) {
     throw new ApiError(
       'Missing Apple API keys',
       0,
@@ -85,7 +93,7 @@ export async function getAppleAuthToken() {
     // In a real implementation, this would use the Apple SDK to authenticate
     // and return a valid token
     console.log('Getting Apple auth token with credentials...');
-    
+
     // Request proper API keys
     return await new Promise((resolve, reject) => {
       // This is where we would use the Apple SignIn SDK
@@ -98,7 +106,7 @@ export async function getAppleAuthToken() {
       ));
     });
   } catch (error) {
-    if (error instanceof ApiError) {
+    if (error && error.name === 'ApiError') {
       throw error;
     }
     throw new ApiError(

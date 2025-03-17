@@ -53,6 +53,7 @@
     ],
     "extra": {
       "apiUrl": "https://${REPL_SLUG}.${REPL_OWNER}.repl.co/api",
+      "googleClientId": "40656007957-kekmfc5b86radqjg5tkchu26meo2fqd7.apps.googleusercontent.com",
       "eas": {
         "projectId": "newsgeo-app"
       }

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
   ActivityIndicator,
   Alert,
   Platform
@@ -13,7 +13,7 @@ import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import useLocalization from '../hooks/useLocalization';
 import ErrorMessage from './ErrorMessage';
-import { ErrorTypes, handleError } from '../utils/errorUtils';
+import { ErrorTypes, handleError, getErrorType } from '../utils/errorUtils';
 import { ApiError } from '../services/api';
 import { isOnline } from '../utils/connectivityUtils';
 
@@ -68,33 +68,32 @@ export default function AuthForm() {
     }
     return true;
   };
-  
+
   // Handle social login attempts
   const handleSocialLogin = async (provider) => {
     // First clear any previous errors
     setError(null);
     setErrorType(null);
-    
+
     // Check for connectivity
     const isConnected = await checkConnectivity();
     if (!isConnected) return;
-    
+
     try {
       await socialLogin(provider);
       // If successful, clear any errors
       setError(null);
       setErrorType(null);
     } catch (err) {
-      // Use our error handling utilities
-      const errorMessage = err instanceof ApiError 
+      const errorMessage = (err && err.name === 'ApiError')
         ? err.getUserMessage()
         : handleError(err, 'AuthForm');
-      
+
       // Set appropriate error type for UI feedback
-      const errType = err instanceof ApiError 
-        ? err.type 
+      const errType = (err && err.name === 'ApiError')
+        ? err.type
         : getErrorType(err);
-      
+
       setError(errorMessage);
       setErrorType(errType);
     }
@@ -104,52 +103,52 @@ export default function AuthForm() {
     // First clear any previous errors
     setError(null);
     setErrorType(null);
-    
+
     // Check for connectivity
     const isConnected = await checkConnectivity();
     if (!isConnected) return;
-    
+
     // Basic validation with proper error feedback
     if (!username.trim()) {
       setError('Please enter your username');
       setErrorType(ErrorTypes.VALIDATION);
       return;
     }
-    
+
     if (!password.trim()) {
       setError('Please enter your password');
       setErrorType(ErrorTypes.VALIDATION);
       return;
     }
-    
-    // Username validation
+
+    // Username validation for registration
     if (!isLogin && !/^[a-zA-Z0-9_-]{3,30}$/.test(username)) {
       setError('Username must be 3-30 characters and can only contain letters, numbers, underscores and hyphens');
       setErrorType(ErrorTypes.VALIDATION);
       return;
     }
-    
+
     // Email validation if registering
     if (!isLogin && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError('Please enter a valid email address');
       setErrorType(ErrorTypes.VALIDATION);
       return;
     }
-    
+
     // Password validation
     if (password.length < 8) {
       setError('Password must be at least 8 characters');
       setErrorType(ErrorTypes.VALIDATION);
       return;
     }
-    
+
     // Password strength validation for registration
     if (!isLogin && !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/.test(password)) {
       setError('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character');
       setErrorType(ErrorTypes.VALIDATION);
       return;
     }
-    
+
     try {
       if (isLogin) {
         await login(username, password);
@@ -160,16 +159,14 @@ export default function AuthForm() {
       setError(null);
       setErrorType(null);
     } catch (err) {
-      // Use our error handling utilities
-      const errorMessage = err instanceof ApiError 
+      const errorMessage = (err && err.name === 'ApiError')
         ? err.getUserMessage()
         : handleError(err, 'AuthForm');
-      
-      // Set appropriate error type for UI feedback
-      const errType = err instanceof ApiError 
-        ? err.type 
+
+      const errType = (err && err.name === 'ApiError')
+        ? err.type
         : getErrorType(err);
-      
+
       setError(errorMessage);
       setErrorType(errType);
     }
@@ -196,7 +193,7 @@ export default function AuthForm() {
         </TouchableOpacity>
       </View>
 
-      <View style={[styles.form, getContainerStyle()]}>
+      <View style={styles.form}>
         <View style={styles.inputGroup}>
           <Text style={[styles.label, getTextAlignStyle()]}>{safeT('auth.username')}</Text>
           <View style={[styles.inputContainer, getDirectionStyle()]}>
@@ -213,18 +210,18 @@ export default function AuthForm() {
         </View>
 
         {error && (
-          <ErrorMessage 
+          <ErrorMessage
             message={error}
             icon={
               errorType === ErrorTypes.NETWORK ? 'wifi-off' :
-              errorType === ErrorTypes.VALIDATION ? 'alert-circle' :
-              errorType === ErrorTypes.AUTH ? 'lock' : 'alert-triangle'
+                errorType === ErrorTypes.VALIDATION ? 'alert-circle' :
+                  errorType === ErrorTypes.AUTH ? 'lock' : 'alert-triangle'
             }
             onRetry={
-              errorType === ErrorTypes.NETWORK ? 
+              errorType === ErrorTypes.NETWORK ?
                 () => checkConnectivity().then(isConnected => {
                   if (isConnected) setError(null);
-                }) : 
+                }) :
                 null
             }
             showRetry={errorType === ErrorTypes.NETWORK}
@@ -305,7 +302,7 @@ export default function AuthForm() {
               <Feather name="mail" size={20} color="#EA4335" />
               <Text style={[styles.socialButtonText, getTextAlignStyle()]}>{safeT('auth.google')}</Text>
             </TouchableOpacity>
-            
+
             {Platform.OS === 'ios' && (
               <TouchableOpacity
                 style={[styles.socialButton, getDirectionStyle()]}
@@ -318,7 +315,7 @@ export default function AuthForm() {
             )}
           </View>
         </View>
-        
+
         <View style={[styles.switchFormContainer, getDirectionStyle()]}>
           <Text style={[styles.switchFormText, getTextAlignStyle()]}>
             {isLogin ? safeT('auth.noAccount') : safeT('auth.haveAccount')}

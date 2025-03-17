@@ -13,6 +13,7 @@ const newsRoutes = require('./routes/news');
 const userRoutes = require('./routes/user');
 const notificationsRoutes = require('./routes/notifications');
 const streamingRoutes = require('./routes/streaming');
+const passwordResetRoutes = require('./routes/password-reset');
 const logger = require('./utils/logger').createLogger('server');
 require('dotenv').config();
 
@@ -60,6 +61,7 @@ const activeStreams = new Map();
     app.use('/api/notifications', notificationsRoutes(storage, { sendNotificationToUser }));
     app.use('/api/streams', streamingRoutes(storage));
     app.use('/api/user', userRoutes(storage));
+    app.use('/api/password-reset', passwordResetRoutes(storage));
 
     logger.info('Database storage initialized successfully');
 

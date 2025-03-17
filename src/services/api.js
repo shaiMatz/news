@@ -463,6 +463,37 @@ export async function fetchUserProfileById(userId) {
   return apiRequest(`/user/profile/${userId}`);
 }
 
+/**
+ * Request a password reset email
+ * 
+ * @param {string} email - User's email address
+ * @returns {Promise<Object>} Response data
+ */
+export async function requestPasswordReset(email) {
+  return apiRequest('/password-reset/request-reset', 'POST', { email });
+}
+
+/**
+ * Validate a password reset token
+ * 
+ * @param {string} token - Reset token from email
+ * @returns {Promise<Object>} Response with token validity
+ */
+export async function validatePasswordResetToken(token) {
+  return apiRequest(`/password-reset/validate-token/${token}`);
+}
+
+/**
+ * Reset password using a valid token
+ * 
+ * @param {string} token - Valid reset token
+ * @param {string} password - New password
+ * @returns {Promise<Object>} Response data
+ */
+export async function resetPassword(token, password) {
+  return apiRequest('/password-reset/reset-password', 'POST', { token, password });
+}
+
 /// Get the correct WebSocket base URL
 function getWebSocketBaseURL() {
   if (typeof window !== 'undefined' && window.location) {

@@ -128,6 +128,29 @@ export default function useLocalization() {
       paddingRight: end,
     };
   };
+  
+  /**
+   * Get a style object for flow containers (like button rows) that respects RTL
+   * This ensures buttons and other UI elements flow in the correct direction
+   * 
+   * @param {boolean} reverse - If true, reverse the normal flow
+   * @returns {Object} Style object with proper RTL-aware flow direction
+   */
+  const getFlowStyle = (reverse = false) => {
+    // For RTL: Default alignment is right-to-left
+    // For LTR: Default alignment is left-to-right
+    if (isRTL !== reverse) {
+      return {
+        flexDirection: 'row-reverse',
+        justifyContent: 'flex-start',
+      };
+    }
+    
+    return {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+    };
+  };
 
   /**
    * Convert a value to match RTL-appropriate direction
@@ -197,6 +220,7 @@ export default function useLocalization() {
     getTextAlignStyle,
     getContainerStyle,
     getHorizontalSpacingStyle,
+    getFlowStyle,
     getDirectionalValue,
     getAvailableLanguages,
     getRTLInfo,

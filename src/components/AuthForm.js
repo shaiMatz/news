@@ -7,15 +7,23 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
-  Platform
+  Platform,
+  Modal
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import useLocalization from '../hooks/useLocalization';
 import ErrorMessage from './ErrorMessage';
+<<<<<<< HEAD
 import { ErrorTypes, handleError, getErrorType } from '../utils/errorUtils';
 import { ApiError } from '../services/api';
+=======
+import { ErrorTypes, handleError } from '../utils/errorUtils';
+import { ApiError, requestPasswordReset } from '../services/api';
+>>>>>>> b844686 (save)
 import { isOnline } from '../utils/connectivityUtils';
+import PasswordStrengthIndicator from './PasswordStrengthIndicator';
+import ForgotPasswordForm from './ForgotPasswordForm';
 
 /**
  * Authentication form component with login and registration functionality
@@ -28,8 +36,10 @@ export default function AuthForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
   const [errorType, setErrorType] = useState(null);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState(false);
   const { login, register, loading, error: authError, socialLogin } = useAuth();
-  const { safeT, getTextAlignStyle, getDirectionStyle } = useLocalization();
+  const { safeT, getTextAlignStyle, getDirectionStyle, getContainerStyle } = useLocalization();
 
   const toggleForm = () => {
     setIsLogin(!isLogin);
@@ -172,8 +182,47 @@ export default function AuthForm() {
     }
   };
 
+  // Handle forgot password submission
+  const handleForgotPassword = async (email) => {
+    try {
+      await requestPasswordReset(email);
+      setForgotPasswordSuccess(true);
+      setShowForgotPassword(false);
+    } catch (err) {
+      // Show error in the forgot password form
+      const errorMessage = err instanceof ApiError 
+        ? err.getUserMessage()
+        : handleError(err, 'ForgotPassword');
+      
+      // Return the error to be displayed in the form
+      return errorMessage;
+    }
+  };
+
   return (
     <View style={styles.container}>
+      {/* Forgot Password Modal */}
+      {showForgotPassword && (
+        <Modal
+          visible={showForgotPassword}
+          transparent={true}
+          animationType="fade"
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <ForgotPasswordForm 
+                onCancel={() => setShowForgotPassword(false)}
+                onSuccess={() => {
+                  setForgotPasswordSuccess(true);
+                  setShowForgotPassword(false);
+                }}
+                onSubmit={handleForgotPassword}
+              />
+            </View>
+          </View>
+        </Modal>
+      )}
+      
       <View style={[styles.formTypeSelector, getDirectionStyle()]}>
         <TouchableOpacity
           style={[styles.formTypeButton, isLogin && styles.activeFormType]}
@@ -269,12 +318,30 @@ export default function AuthForm() {
               />
             </TouchableOpacity>
           </View>
+          
+          {/* Show password strength indicator for registration */}
+          {!isLogin && password.length > 0 && (
+            <View style={styles.strengthIndicatorContainer}>
+              <PasswordStrengthIndicator password={password} />
+            </View>
+          )}
         </View>
 
         {isLogin && (
-          <TouchableOpacity style={[styles.forgotPassword, { alignSelf: getTextAlignStyle().textAlign === 'right' ? 'flex-start' : 'flex-end' }]}>
+          <TouchableOpacity 
+            style={[styles.forgotPassword, { alignSelf: getTextAlignStyle().textAlign === 'right' ? 'flex-start' : 'flex-end' }]}
+            onPress={() => setShowForgotPassword(true)}
+          >
             <Text style={[styles.forgotPasswordText, getTextAlignStyle()]}>{safeT('auth.forgotPassword')}</Text>
           </TouchableOpacity>
+        )}
+        
+        {/* Forgot password success message */}
+        {forgotPasswordSuccess && (
+          <View style={styles.successContainer}>
+            <Feather name="check-circle" size={20} color="#10B981" style={styles.successIcon} />
+            <Text style={styles.successText}>{safeT('auth.resetLinkSent')}</Text>
+          </View>
         )}
 
         <TouchableOpacity
@@ -465,5 +532,46 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#334155',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    overflow: 'hidden',
+  },
+  // Password strength indicator styles
+  strengthIndicatorContainer: {
+    marginTop: 8,
+  },
+  // Success message styles
+  successContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  successIcon: {
+    marginRight: 8,
+  },
+  successText: {
+    color: '#10B981',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

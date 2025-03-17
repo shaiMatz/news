@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,8 @@ import {
   Modal,
   FlatList,
   Platform,
-  Picker
+  Picker,
+  I18nManager
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useLocalizationContext } from '../contexts/LocalizationContext';
@@ -27,14 +28,27 @@ export default function LanguageSelector({
   onLanguageChange = null
 }) {
   const { language, changeLanguage, getAvailableLanguages, safeT } = useLocalization();
-  const { isRTL, getDirectionStyle, getTextAlignStyle } = useLocalizationContext();
+  const { isRTL, getDirectionStyle, getTextAlignStyle, getContainerStyle } = useLocalizationContext();
   const [modalVisible, setModalVisible] = useState(false);
   const languages = getAvailableLanguages();
   
   const currentLanguage = languages.find(lang => lang.code === language) || languages[0];
+
+  // Show refresh notice when changing RTL setting
+  const [showReloadNotice, setShowReloadNotice] = useState(false);
   
   const handleLanguageSelect = async (langCode) => {
     if (langCode !== language) {
+      // Check if we're switching between RTL/LTR
+      const selectedLang = languages.find(lang => lang.code === langCode);
+      const isCurrentLangRTL = currentLanguage.isRTL;
+      const isSelectedLangRTL = selectedLang.isRTL;
+      
+      // If RTL direction is changing, handle specially
+      if (isCurrentLangRTL !== isSelectedLangRTL) {
+        setShowReloadNotice(true);
+      }
+      
       const success = await changeLanguage(langCode);
       if (success && onLanguageChange) {
         onLanguageChange(langCode);
@@ -44,6 +58,25 @@ export default function LanguageSelector({
     setModalVisible(false);
   };
   
+  // Create directional icon based on RTL status
+  const getDirectionalIcon = (iconName) => {
+    if (iconName === 'chevron-left' && isRTL) {
+      return 'chevron-right';
+    } else if (iconName === 'chevron-right' && isRTL) {
+      return 'chevron-left';
+    }
+    return iconName;
+  };
+  
+  // RTL indicator for languages
+  const RTLIndicator = ({ isRTL }) => (
+    <View style={styles.rtlIndicator}>
+      <Text style={styles.rtlIndicatorText}>
+        {isRTL ? 'RTL' : 'LTR'}
+      </Text>
+    </View>
+  );
+  
   if (type === 'inline') {
     return (
       <View style={[styles.inlineContainer, getDirectionStyle()]}>
@@ -52,14 +85,17 @@ export default function LanguageSelector({
             key={lang.code}
             style={[
               styles.inlineOption,
-              lang.code === language && styles.selectedInlineOption
+              lang.code === language && styles.selectedInlineOption,
+              lang.isRTL && styles.rtlLanguageOption
             ]}
             onPress={() => handleLanguageSelect(lang.code)}
           >
             <Text style={[
               styles.inlineOptionText,
               getTextAlignStyle(),
-              lang.code === language && styles.selectedInlineOptionText
+              lang.code === language && styles.selectedInlineOptionText,
+              // Use actual language's RTL for text, not app's current RTL
+              {textAlign: lang.isRTL ? 'right' : 'left'}
             ]}>
               {lang.nativeName}
             </Text>
@@ -69,14 +105,23 @@ export default function LanguageSelector({
     );
   }
   
-  if (Platform.OS === 'ios' && type === 'dropdown') {
+  if ((Platform.OS === 'ios' || Platform.OS === 'web') && type === 'dropdown') {
     return (
       <View style={styles.container}>
         <TouchableOpacity 
           style={[styles.dropdownButton, getDirectionStyle()]}
           onPress={() => setModalVisible(true)}
         >
-          {showLabel && <Text style={[styles.dropdownLabel, getTextAlignStyle()]}>{currentLanguage.nativeName}</Text>}
+          {showLabel && (
+            <Text style={[
+              styles.dropdownLabel, 
+              getTextAlignStyle(), 
+              // Handle native text rendering for RTL languages
+              currentLanguage.isRTL && styles.rtlLanguageText
+            ]}>
+              {currentLanguage.nativeName}
+            </Text>
+          )}
           <Feather name="globe" size={20} color="#64748B" />
         </TouchableOpacity>
         
@@ -107,14 +152,25 @@ export default function LanguageSelector({
                     ]}
                     onPress={() => handleLanguageSelect(item.code)}
                   >
-                    <Text style={[
-                      styles.languageName,
-                      getTextAlignStyle(),
-                      item.code === language && styles.selectedLanguageName
-                    ]}>
-                      {item.name}
-                    </Text>
-                    <Text style={[styles.nativeName, getTextAlignStyle()]}>{item.nativeName}</Text>
+                    <View style={{flex: 1}}>
+                      <Text style={[
+                        styles.languageName,
+                        getTextAlignStyle(),
+                        item.code === language && styles.selectedLanguageName
+                      ]}>
+                        {item.name}
+                      </Text>
+                      <Text style={[
+                        styles.nativeName, 
+                        // Use actual language's RTL for text, not app's current RTL
+                        {textAlign: item.isRTL ? 'right' : 'left'},
+                        item.isRTL && styles.rtlLanguageText
+                      ]}>
+                        {item.nativeName}
+                      </Text>
+                    </View>
+                    
+                    <RTLIndicator isRTL={item.isRTL} />
                     
                     {item.code === language && (
                       <Feather name="check" size={20} color="#2563EB" />
@@ -122,6 +178,14 @@ export default function LanguageSelector({
                   </TouchableOpacity>
                 )}
               />
+              
+              {showReloadNotice && (
+                <View style={styles.reloadNotice}>
+                  <Text style={styles.reloadNoticeText}>
+                    {safeT('profile.languageChangeRestart', 'The app may need to refresh when changing between RTL and LTR languages')}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
         </Modal>
@@ -134,7 +198,11 @@ export default function LanguageSelector({
     <View style={[styles.container, getDirectionStyle()]}>
       <Picker
         selectedValue={language}
-        style={[styles.picker, isRTL && {textAlign: 'right'}]}
+        style={[
+          styles.picker, 
+          isRTL && {textAlign: 'right', direction: 'rtl'},
+          getContainerStyle()
+        ]}
         onValueChange={handleLanguageSelect}
       >
         {languages.map(lang => (
@@ -164,6 +232,43 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
     fontSize: 16,
     color: '#64748B',
+  },
+  rtlLanguageText: {
+    fontWeight: '500',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+  },
+  rtlLanguageOption: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#EAB308',
+  },
+  rtlIndicator: {
+    marginHorizontal: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  rtlIndicatorText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#64748B',
+  },
+  reloadNotice: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FEF3C7',
+    marginHorizontal: 12,
+    marginVertical: 8,
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#F59E0B',
+  },
+  reloadNoticeText: {
+    fontSize: 14,
+    color: '#92400E',
+    lineHeight: 20,
   },
   picker: {
     height: 50,
@@ -224,11 +329,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    flexWrap: 'wrap',
   },
   inlineOption: {
     paddingVertical: 8,
     paddingHorizontal: 12,
     marginHorizontal: 4,
+    marginVertical: 4,
     borderRadius: 16,
     backgroundColor: '#F1F5F9',
   },

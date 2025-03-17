@@ -14,13 +14,8 @@ import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import useLocalization from '../hooks/useLocalization';
 import ErrorMessage from './ErrorMessage';
-<<<<<<< HEAD
 import { ErrorTypes, handleError, getErrorType } from '../utils/errorUtils';
-import { ApiError } from '../services/api';
-=======
-import { ErrorTypes, handleError } from '../utils/errorUtils';
 import { ApiError, requestPasswordReset } from '../services/api';
->>>>>>> b844686 (save)
 import { isOnline } from '../utils/connectivityUtils';
 import PasswordStrengthIndicator from './PasswordStrengthIndicator';
 import ForgotPasswordForm from './ForgotPasswordForm';

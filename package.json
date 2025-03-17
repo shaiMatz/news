@@ -52,6 +52,7 @@
     "express-session": "^1.18.1",
     "express-validator": "^7.2.1",
     "helmet": "^8.0.0",
+    "http-proxy-middleware": "^3.0.3",
     "i18next": "^24.2.3",
     "jsonwebtoken": "^9.0.2",
     "memorystore": "^1.6.7",

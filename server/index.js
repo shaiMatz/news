@@ -18,9 +18,9 @@ const logger = require('./utils/logger').createLogger('server');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 5000; // Use port 5000 for Replit environment
 const httpServer = createServer(app);
-const origin = ['http://localhost:3000', 'http://0.0.0.0:3000', 'http://localhost:8081', 'http://0.0.0.0:8081'];
+const origin = ['http://localhost:3000', 'http://0.0.0.0:3000', 'http://localhost:8081', 'http://0.0.0.0:8081', 'http://localhost:5000', 'http://0.0.0.0:5000'];
 
 // Configure CORS and JSON body parsing
 app.use(cors({
@@ -362,6 +362,16 @@ app.get('/websocket-test', (req, res) => {
 app.get('/api/test', (req, res) => {
   logger.debug('Test API endpoint accessed', { ip: req.ip });
   res.json({ status: 'ok', message: 'API is working!', time: new Date().toISOString() });
+});
+// Health check endpoint for monitoring
+app.get('/ping', (req, res) => {
+  logger.debug('Health check ping received', { ip: req.ip });
+  res.json({ 
+    status: 'ok', 
+    uptime: process.uptime(),
+    message: 'NewsGeo server is running!', 
+    time: new Date().toISOString() 
+  });
 });
 
 // Error handling middleware

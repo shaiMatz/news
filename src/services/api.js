@@ -270,11 +270,48 @@ export async function register(username, email, password) {
 }
 
 export async function socialLogin(provider, token) {
-  return apiRequest('/social-login', 'POST', { 
-    provider, 
-    token,
-    device: Platform.OS
+  // Collect detailed device information for security logging and analytics
+  const deviceInfo = {
+    platform: Platform.OS,
+    version: Platform.Version,
+    name: Platform.OS === 'web' ? 'Browser' : 'Mobile App',
+    timestamp: new Date().toISOString(),
+    locale: navigator?.language || 'unknown',
+    timeZone: Intl?.DateTimeFormat()?.resolvedOptions()?.timeZone || 'unknown',
+    screenDimensions: {
+      width: window?.innerWidth || 0,
+      height: window?.innerHeight || 0
+    },
+    userAgent: navigator?.userAgent || 'unknown',
+    // Obscured device IP will be added on the server side
+  };
+  
+  // Only include basic device info in logs to protect user privacy
+  console.log('Social login attempt:', {
+    provider,
+    platform: deviceInfo.platform,
+    tokenLength: token ? token.length : 0
   });
+  
+  try {
+    return await apiRequest('/api/social-login', 'POST', { 
+      provider, 
+      token,
+      device: deviceInfo
+    });
+  } catch (error) {
+    console.error(`Social login (${provider}) failed:`, error.message);
+    // Add specific error handling for social login failures
+    if (error.status === 401) {
+      throw new ApiError(
+        'Social login authentication failed',
+        401,
+        ErrorTypes.AUTH,
+        `${provider.charAt(0).toUpperCase() + provider.slice(1)} authentication failed. Please try again.`
+      );
+    }
+    throw error;
+  }
 }
 
 export async function logout() {

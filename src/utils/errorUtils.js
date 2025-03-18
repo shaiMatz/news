@@ -14,7 +14,11 @@ export const ErrorTypes = {
   TIMEOUT: 'TIMEOUT',        // Request timeouts
   UNKNOWN: 'UNKNOWN',        // Uncategorized errors
   PERMISSION: 'PERMISSION',  // Permission-related errors
-  CONFIG: 'CONFIG'           // Configuration or API key errors
+  CONFIG: 'CONFIG',          // Configuration or API key errors
+  USER_CANCELLED: 'USER_CANCELLED', // User cancelled the operation
+  IN_PROGRESS: 'IN_PROGRESS',      // Operation is already in progress
+  DEVICE_ERROR: 'DEVICE_ERROR',    // Device specific errors (like missing Google Play Services)
+  PLATFORM: 'PLATFORM'             // Platform compatibility issues (features only available on specific platforms)
 };
 
 /**
@@ -29,6 +33,10 @@ export const ErrorMessages = {
   [ErrorTypes.TIMEOUT]: 'The request took too long to complete. Please try again.',
   [ErrorTypes.PERMISSION]: 'You don\'t have permission to perform this action.',
   [ErrorTypes.CONFIG]: 'The application is missing required configuration settings.',
+  [ErrorTypes.USER_CANCELLED]: 'Sign in was cancelled. Please try again if you want to continue.',
+  [ErrorTypes.IN_PROGRESS]: 'An operation is already in progress. Please wait.',
+  [ErrorTypes.DEVICE_ERROR]: 'Your device doesn\'t support this feature. Please try another method.',
+  [ErrorTypes.PLATFORM]: 'This feature is not available on your device platform.',
   [ErrorTypes.UNKNOWN]: 'An unexpected error occurred. Please try again.'
 };
 

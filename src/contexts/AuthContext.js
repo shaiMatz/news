@@ -12,12 +12,12 @@ import { closeNotificationSocket, setupNotificationSocket } from '../services/no
 import { getGoogleAuthToken, getAppleAuthToken } from '../services/socialAuth';
 import { handleError, ErrorTypes, getUserFriendlyMessage, getErrorType } from '../utils/errorUtils';
 import { isOnline } from '../utils/connectivityUtils';
-import Config from 'react-native-config';
+import Config, { getGoogleClientId } from '../config';
 
-const GOOGLE_CLIENT_ID = Config.GOOGLE_CLIENT_ID || '';
-const GOOGLE_CLIENT_SECRET = Config.GOOGLE_CLIENT_SECRET || '';
-const APPLE_CLIENT_ID = Config.APPLE_CLIENT_ID || '';
-const APPLE_TEAM_ID = Config.APPLE_TEAM_ID || '';
+// Get necessary config values
+const GOOGLE_CLIENT_ID = getGoogleClientId();
+const APPLE_CLIENT_ID = process.env.APPLE_CLIENT_ID || '';
+const APPLE_TEAM_ID = process.env.APPLE_TEAM_ID || '';
 
 const AuthContext = createContext();
 
@@ -255,12 +255,23 @@ export function AuthProvider({ children }) {
 
   /**
    * Handle social login through providers like Google or Apple
+   * Provides robust error handling and user feedback
+   * 
+   * @param {string} provider - The authentication provider ('google' or 'apple')
+   * @param {Object} options - Additional options for the login process
+   * @param {string} options.device - Device information for analytics
+   * @returns {Promise<Object>} User data on successful login
+   * @throws {ApiError} If authentication fails
    */
-  const socialLogin = async (provider) => {
+  const socialLogin = async (provider, options = {}) => {
     try {
       setLoading(true);
       setError(null);
+      
+      const device = options.device || Platform.OS;
+      console.log(`Initializing ${provider} login on ${device}`);
 
+      // Check network connectivity first
       const online = await isOnline();
       if (!online) {
         throw new ApiError(
@@ -271,6 +282,7 @@ export function AuthProvider({ children }) {
         );
       }
 
+      // Validate authentication provider
       if (!provider || !['google', 'apple'].includes(provider)) {
         throw new ApiError(
           'Invalid provider',
@@ -280,52 +292,135 @@ export function AuthProvider({ children }) {
         );
       }
 
+      // Get authentication token from the appropriate provider
       let token;
-      const missingKeys = [];
+      
+      // Check for necessary API credentials based on the provider
       if (provider === 'google') {
         if (!GOOGLE_CLIENT_ID) {
-          missingKeys.push('GOOGLE_CLIENT_ID');
-        }
-        if (!GOOGLE_CLIENT_SECRET) {
-          missingKeys.push('GOOGLE_CLIENT_SECRET');
-        }
-        if (missingKeys.length > 0) {
+          console.error('Missing Google client ID');
           throw new ApiError(
-            `Missing API keys: ${missingKeys.join(', ')}`,
+            'Missing Google API credentials',
             0,
             ErrorTypes.CONFIG,
-            'Google login is not currently available. Please try another login method.'
+            'Google login is not properly configured. Please contact support.'
           );
         }
-        console.log('Using Google credentials:', GOOGLE_CLIENT_ID);
-        token = await getGoogleAuthToken();
-      } else if (provider === 'apple' && Platform.OS === 'ios') {
-        if (!APPLE_CLIENT_ID) {
-          missingKeys.push('APPLE_CLIENT_ID');
-        }
-        if (!APPLE_TEAM_ID) {
-          missingKeys.push('APPLE_TEAM_ID');
-        }
-        if (missingKeys.length > 0) {
+        
+        console.log('Initiating Google authentication flow');
+        try {
+          // Get the authentication token from Google
+          token = await getGoogleAuthToken();
+          console.log('Google authentication token obtained successfully');
+        } catch (googleError) {
+          // Handle specific Google authentication errors
+          if (googleError.name === 'ApiError') {
+            throw googleError; // Pass through API errors with user messages
+          }
+          
+          // Check if user cancelled the sign-in
+          if (googleError.message && googleError.message.includes('cancelled')) {
+            throw new ApiError(
+              'Google Sign-In was cancelled',
+              0,
+              ErrorTypes.USER_CANCELLED,
+              'Sign in was cancelled. Please try again if you want to sign in.'
+            );
+          }
+          
+          // Check for platform-specific errors
+          if (Platform.OS === 'android' && googleError.message && 
+              googleError.message.includes('play services')) {
+            throw new ApiError(
+              'Google Play Services error',
+              0,
+              ErrorTypes.DEVICE_ERROR,
+              'Google Play Services are required for Google Sign-In. Please update Google Play Services and try again.'
+            );
+          }
+          
+          // Generic Google authentication error
           throw new ApiError(
-            `Missing API keys: ${missingKeys.join(', ')}`,
+            `Google authentication error: ${googleError.message}`,
+            0,
+            ErrorTypes.AUTH,
+            'Unable to authenticate with Google. Please try again later.'
+          );
+        }
+      } else if (provider === 'apple') {
+        // Validate platform compatibility first
+        if (Platform.OS !== 'ios') {
+          throw new ApiError(
+            'Apple Sign In not supported on this platform',
+            0,
+            ErrorTypes.PLATFORM,
+            'Apple Sign In is only available on iOS devices.'
+          );
+        }
+        
+        // Check for Apple credentials
+        if (!APPLE_CLIENT_ID || !APPLE_TEAM_ID) {
+          console.error('Missing Apple credentials');
+          throw new ApiError(
+            'Missing Apple API credentials',
             0,
             ErrorTypes.CONFIG,
-            'Apple login is not currently available. Please try another login method.'
+            'Apple login is not properly configured. Please contact support.'
           );
         }
-        console.log('Using Apple credentials:', APPLE_CLIENT_ID);
-        token = await getAppleAuthToken();
+        
+        console.log('Initiating Apple authentication flow');
+        try {
+          // Get the authentication token from Apple
+          token = await getAppleAuthToken();
+          console.log('Apple authentication token obtained successfully');
+        } catch (appleError) {
+          // Handle specific Apple authentication errors
+          if (appleError.name === 'ApiError') {
+            throw appleError; // Pass through API errors with user messages
+          }
+          
+          // Check if user cancelled the sign-in
+          if (appleError.message && appleError.message.includes('cancelled')) {
+            throw new ApiError(
+              'Apple Sign-In was cancelled',
+              0,
+              ErrorTypes.USER_CANCELLED,
+              'Sign in was cancelled. Please try again if you want to sign in.'
+            );
+          }
+          
+          // Generic Apple authentication error
+          throw new ApiError(
+            `Apple authentication error: ${appleError.message}`,
+            0,
+            ErrorTypes.AUTH,
+            'Unable to authenticate with Apple. Please try again later.'
+          );
+        }
       } else {
         throw new ApiError(
-          'Provider not supported on this platform',
+          'Unsupported provider',
           0,
           ErrorTypes.VALIDATION,
-          'This login method is not available on your device.'
+          'This login method is not supported. Please try another login method.'
         );
       }
 
-      const userData = await apiSocialLogin(provider, token);
+      // Validate token before sending to the server
+      if (!token || typeof token !== 'string' || token.length < 10) {
+        throw new ApiError(
+          'Invalid authentication token',
+          0,
+          ErrorTypes.VALIDATION,
+          'Authentication failed. Please try again.'
+        );
+      }
+
+      console.log(`Authenticating with the server using ${provider} token`);
+      
+      // Authenticate with our server using the token
+      const userData = await apiSocialLogin(provider, token, { device });
 
       if (!userData) {
         throw new ApiError(
@@ -336,18 +431,27 @@ export function AuthProvider({ children }) {
         );
       }
 
+      console.log(`${provider} authentication successful`);
+      
+      // Set user data and establish notification socket
       setUser(userData);
       setupNotificationSocket(userData);
 
       return userData;
     } catch (err) {
+      // Log the error for debugging
       handleError(err, `AuthContext.socialLogin.${provider}`);
 
+      // Provide user-friendly error messages based on error type
       const userMessage = err.userMessage || getUserFriendlyMessage(err, {
         [ErrorTypes.AUTH]: `${provider.charAt(0).toUpperCase() + provider.slice(1)} authentication failed. Please try again.`,
         [ErrorTypes.VALIDATION]: 'There was a problem with your social login. Please try again.',
         [ErrorTypes.NETWORK]: 'Unable to connect. Please check your internet connection.',
-        [ErrorTypes.SERVER]: 'Our servers are experiencing issues. Please try again later.'
+        [ErrorTypes.SERVER]: 'Our servers are experiencing issues. Please try again later.',
+        [ErrorTypes.CONFIG]: `${provider.charAt(0).toUpperCase() + provider.slice(1)} login is not properly configured. Please try another login method.`,
+        [ErrorTypes.USER_CANCELLED]: 'Sign in was cancelled. You can try again anytime.',
+        [ErrorTypes.PLATFORM]: `${provider.charAt(0).toUpperCase() + provider.slice(1)} sign in is not available on your device.`,
+        [ErrorTypes.DEVICE_ERROR]: 'Your device does not support this login method. Please try another option.'
       });
 
       setError(userMessage);

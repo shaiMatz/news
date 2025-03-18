@@ -294,6 +294,235 @@ function setupAuth(app, storage) {
     refreshToken(req, res);
   });
 
+  // Social login route for Google, Apple, etc.
+  app.post('/api/social-login', async (req, res, next) => {
+    try {
+      const { provider, token, device } = req.body;
+      
+      if (!provider || !token) {
+        logger.warn('Invalid social login request - missing provider or token', { ip: req.ip });
+        return res.status(400).json({
+          error: true,
+          message: 'Provider and token are required'
+        });
+      }
+
+      logger.info('Social login attempt', { provider, device, ip: req.ip });
+
+      // Verify the token with the appropriate provider
+      let userInfo;
+      
+      if (provider === 'google') {
+        try {
+          // Verify the token with Google OAuth API - production-ready implementation
+          const axios = require('axios');
+          const { GOOGLE_CLIENT_ID } = process.env;
+          
+          // Log redacted client ID for debugging (security best practice)
+          const redactedClientId = GOOGLE_CLIENT_ID 
+            ? `${GOOGLE_CLIENT_ID.substring(0, 6)}...${GOOGLE_CLIENT_ID.substring(GOOGLE_CLIENT_ID.length - 4)}`
+            : 'Not configured';
+          logger.debug('Using Google client ID for verification', { clientId: redactedClientId });
+          
+          if (!GOOGLE_CLIENT_ID) {
+            logger.error('Google login configuration error - Missing CLIENT_ID env variable');
+            throw new Error('Server configuration error - Google authentication not properly configured');
+          }
+          
+          // Verify the token with Google's token info endpoint
+          const tokenInfoUrl = `https://oauth2.googleapis.com/tokeninfo?id_token=${token}`;
+          logger.debug('Verifying Google token with Google API', { tokenLength: token.length });
+          
+          // Add timeout and validation for security
+          const response = await axios.get(tokenInfoUrl, { 
+            timeout: 5000,
+            validateStatus: status => status === 200
+          });
+          const tokenData = response.data;
+          
+          // Enhanced security validation checks
+          
+          // 1. Validate the token's audience matches our client ID
+          if (tokenData.aud !== GOOGLE_CLIENT_ID) {
+            logger.warn('Google token validation failed - client ID mismatch', {
+              expected: redactedClientId,
+              received: tokenData.aud ? `${tokenData.aud.substring(0, 6)}...` : 'Missing'
+            });
+            throw new Error('Token was not issued for this application');
+          }
+          
+          // 2. Check token has not expired
+          const currentTime = Math.floor(Date.now() / 1000);
+          if (tokenData.exp && currentTime > tokenData.exp) {
+            logger.warn('Google token validation failed - token expired', {
+              tokenExp: tokenData.exp,
+              currentTime,
+              diffSeconds: currentTime - tokenData.exp
+            });
+            throw new Error('Token has expired');
+          }
+          
+          // 3. Check token issuer is Google
+          if (tokenData.iss !== 'https://accounts.google.com' && 
+              tokenData.iss !== 'accounts.google.com') {
+            logger.warn('Google token validation failed - invalid issuer', {
+              issuer: tokenData.iss
+            });
+            throw new Error('Token was not issued by Google');
+          }
+          
+          // 4. Ensure token has not been used before valid start time
+          if (tokenData.iat && currentTime < tokenData.iat) {
+            logger.warn('Google token validation failed - used before issue time', {
+              issuedAt: tokenData.iat,
+              currentTime,
+              diffSeconds: tokenData.iat - currentTime
+            });
+            throw new Error('Token is not yet valid');
+          }
+          
+          // 5. Only accept emails that have been verified by Google
+          if (tokenData.email_verified !== 'true' && tokenData.email_verified !== true) {
+            logger.warn('Google login attempt with unverified email', { 
+              email: tokenData.email ? `${tokenData.email.substring(0, 3)}***@${tokenData.email.split('@')[1]}` : 'Missing email'
+            });
+            throw new Error('Email address not verified with Google');
+          }
+          
+          // Log successful verification
+          logger.debug('Google token verified successfully', { 
+            sub: tokenData.sub,
+            email: tokenData.email ? `${tokenData.email.substring(0, 3)}***@${tokenData.email.split('@')[1]}` : 'Unknown',
+            name: tokenData.name ? `${tokenData.name.split(' ')[0][0]}***` : 'Unknown',
+            emailVerified: tokenData.email_verified
+          });
+          
+          // Store important user information for account creation/login
+          userInfo = {
+            providerId: tokenData.sub,
+            email: tokenData.email,
+            name: tokenData.name || '',
+            picture: tokenData.picture || '',
+            locale: tokenData.locale || 'en',
+            // Additional profile data from Google can be added here
+            verifiedEmail: !!tokenData.email_verified
+          };
+          
+        } catch (error) {
+          logger.error('Failed to verify Google token', { error: error.message });
+          return res.status(401).json({
+            error: true,
+            message: 'Invalid authentication token'
+          });
+        }
+      } else if (provider === 'apple') {
+        // Apple token verification would go here
+        logger.warn('Apple login not fully implemented', { ip: req.ip });
+        return res.status(501).json({
+          error: true,
+          message: 'Apple login is not currently supported'
+        });
+      } else {
+        logger.warn('Unsupported social login provider', { provider, ip: req.ip });
+        return res.status(400).json({
+          error: true,
+          message: 'Unsupported authentication provider'
+        });
+      }
+
+      // Look for existing user with this provider ID or email
+      let user = null;
+      
+      // Try to find by email
+      if (userInfo.email) {
+        user = await storage.getUserByEmail(userInfo.email);
+      }
+      
+      // If user doesn't exist, create a new one
+      if (!user) {
+        logger.info('Creating new user from social login', { 
+          provider, 
+          email: userInfo.email
+        });
+        
+        // Generate a secure random password for the account
+        // (user won't know this password but can reset it if needed)
+        const randomPassword = require('crypto')
+          .randomBytes(16)
+          .toString('hex');
+        
+        const userData = {
+          username: userInfo.email.split('@')[0] + '_' + Date.now().toString().slice(-4),
+          email: userInfo.email,
+          password: await hashPassword(randomPassword),
+          name: userInfo.name || '',
+          profilePicture: userInfo.picture || '',
+          providerType: provider,
+          providerId: userInfo.providerId,
+          lastLogin: new Date(),
+          passwordLastChanged: new Date()
+        };
+        
+        user = await storage.createUser(userData);
+        logger.info('Social login user created', { userId: user.id, provider });
+      } else {
+        logger.info('Found existing user for social login', { 
+          userId: user.id, 
+          provider
+        });
+        
+        // Update the user's profile with latest provider data
+        logger.debug('Updating user profile with latest provider data', { userId: user.id });
+        
+        // Only update fields that exist in the user profile
+        const updateData = { 
+          lastLogin: new Date(),
+          providerType: provider,
+          providerId: userInfo.providerId
+        };
+        
+        // Conditionally update additional profile information
+        if (userInfo.picture && userInfo.picture !== user.profilePicture) {
+          updateData.profilePicture = userInfo.picture;
+          logger.debug('Updating user profile picture', { userId: user.id });
+        }
+        
+        if (userInfo.name && userInfo.name !== user.name) {
+          updateData.name = userInfo.name;
+          logger.debug('Updating user name', { userId: user.id });
+        }
+        
+        // Store authentication timestamp for security auditing
+        updateData.lastProviderAuthAt = new Date();
+        
+        // Apply the profile updates
+        await storage.updateUserProfile(user.id, updateData);
+      }
+
+      // Generate a JWT token for the user
+      logger.debug('Generating JWT token for social login', { userId: user.id });
+      const jwtToken = generateToken(user);
+      
+      // Log the user in via the session as well
+      req.login(user, (err) => {
+        if (err) {
+          logger.error('Error during social login session creation', { error: err, userId: user.id });
+          return next(err);
+        }
+        
+        logger.info('Social login successful', { userId: user.id, provider });
+        const { password, ...userWithoutPassword } = user;
+        return res.json({
+          user: userWithoutPassword,
+          token: jwtToken
+        });
+      });
+    } catch (error) {
+      logger.error('Social login error', { error });
+      next(error);
+    }
+  });
+
   // Attach requireAuth middleware for other routes
   app.use((req, res, next) => {
     logger.debug('Setting up requireAuth middleware for routes');
